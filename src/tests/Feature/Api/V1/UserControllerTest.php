@@ -4,13 +4,13 @@ namespace Tests\Feature\Api\V1;
 
 use App\Http\Controllers\Api\V1\UserController;
 use App\Models\User;
-use Gate;
-use Hash;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPOpenSourceSaver\JWTAuth\Facades\JWTAuth;
 use Tests\TestCase;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Hash;
 use Mockery;
 
 class UserControllerTest extends TestCase

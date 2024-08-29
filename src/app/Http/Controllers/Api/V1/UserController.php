@@ -10,6 +10,7 @@ use App\Http\Requests\Api\V1\UpdateUserRequest;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Facades\Log;
 
 class UserController extends Controller
 {
@@ -42,10 +43,10 @@ class UserController extends Controller
                 ]
             ]);
         } catch (ModelNotFoundException $e) {
-            \Log::debug('ModelNotFoundException caught in index method: ' . $e->getMessage());
+            Log::debug('ModelNotFoundException caught in index method: ' . $e->getMessage());
             return $this->errorResponse($e, 404, 'RESOURCE_NOT_FOUND', '指定されたユーザーが見つかりません。');
         } catch (\Exception $e) {
-            \Log::debug('Exception caught in index method: ' . $e->getMessage());
+            Log::debug('Exception caught in index method: ' . $e->getMessage());
             return $this->errorResponse($e);
         }
     }
@@ -68,10 +69,10 @@ class UserController extends Controller
                 'createdAt' => $user->created_at
             ], 201);
         } catch (AuthorizationException $e) {
-            \Log::debug('AuthorizationException caught in store method');
+            Log::debug('AuthorizationException caught in store method');
             return $this->errorResponse($e, 403, 'UNAUTHORIZED', 'このアクションを実行する権限がありません。');
         } catch (\Exception $e) {
-            \Log::debug('Exception caught in store method: ' . $e->getMessage());
+            Log::debug('Exception caught in store method: ' . $e->getMessage());
             return $this->errorResponse($e);
         }
     }
@@ -127,7 +128,7 @@ class UserController extends Controller
 
             return response()->json(null, 204);
         } catch (\Exception $e) {
-            \Log::error('Error deleting user: ' . $e->getMessage());
+            Log::error('Error deleting user: ' . $e->getMessage());
             return $this->errorResponse($e);
         }
     }
@@ -193,7 +194,7 @@ class UserController extends Controller
             $message = $e->getMessage();
         }
 
-        \Log::error('User operation failed: ' . $e->getMessage());
+        Log::error('User operation failed: ' . $e->getMessage());
         return response()->json([
             'error' => [
                 'code' => $code,

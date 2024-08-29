@@ -4,9 +4,9 @@ namespace Tests\Feature\Api\V1;
 
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Models\User;
-use Auth;
+use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
-use Hash;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 use Illuminate\Support\Facades\Password;
