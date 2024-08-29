@@ -3,6 +3,9 @@
 namespace Tests\Feature;
 
 // use Illuminate\Foundation\Testing\RefreshDatabase;
+
+use Illuminate\Process\FakeProcessSequence;
+use phpDocumentor\Reflection\PseudoTypes\False_;
 use Tests\TestCase;
 
 class ExampleTest extends TestCase
@@ -15,5 +18,13 @@ class ExampleTest extends TestCase
         $response = $this->get('/');
 
         $response->assertStatus(200);
+    }
+
+    /**
+     * @test
+     */
+    function これはテストです。()
+    {
+        $this->assertTrue(true);
     }
 }
