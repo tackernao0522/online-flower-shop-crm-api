@@ -14,11 +14,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/* && \
     docker-php-ext-install intl pdo_mysql zip bcmath pdo_sqlite
 
-# Xdebug 設定の追加
-RUN echo "xdebug.mode=debug" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini && \
-    echo "xdebug.start_with_request=yes" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini && \
-    echo "xdebug.client_host=host.docker.internal" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
-
+# Xdebug 設定は php.ini で管理するため、Dockerfileでの設定追加部分を削除
 COPY ./php.ini /usr/local/etc/php/php.ini
 
 WORKDIR /data
