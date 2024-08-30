@@ -1,6 +1,6 @@
 FROM php:8.1-fpm-buster
 
-ENV COMPOSER_ALLOW_SUPERUSER-1 \
+ENV COMPOSER_ALLOW_SUPERUSER=1 \
     COMPOSER_HOME=/composer
 
 COPY --from=composer:2.2 /usr/bin/composer /usr/bin/composer
@@ -13,6 +13,11 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
     docker-php-ext-install intl pdo_mysql zip bcmath pdo_sqlite
+
+# Xdebug 設定の追加
+RUN echo "xdebug.mode=debug" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini && \
+    echo "xdebug.start_with_request=yes" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini && \
+    echo "xdebug.client_host=host.docker.internal" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
 
 COPY ./php.ini /usr/local/etc/php/php.ini
 
