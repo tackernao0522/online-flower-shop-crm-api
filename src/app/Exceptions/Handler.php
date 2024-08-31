@@ -6,6 +6,8 @@ use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
 use Throwable;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Validation\ValidationException;
+use Illuminate\Auth\AuthenticationException;
 
 class Handler extends ExceptionHandler
 {
@@ -50,19 +52,16 @@ class Handler extends ExceptionHandler
             ], 404);
         }
 
-        // バリデーションエラーの処理を追加
-        if ($exception instanceof \Illuminate\Validation\ValidationException) {
+        if ($exception instanceof ValidationException) {
             return parent::render($request, $exception);
         }
 
-        // 認証エラーの処理を追加
-        if ($exception instanceof \Illuminate\Auth\AuthenticationException) {
+        if ($exception instanceof AuthenticationException) {
             return response()->json([
                 'message' => 'Unauthenticated.'
             ], 401);
         }
 
-        // その他の例外
         if ($exception instanceof \Exception) {
             return response()->json([
                 'error' => [

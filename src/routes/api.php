@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\CustomerController;
 use App\Http\Controllers\Api\V1\UserController;
 
 Route::prefix('v1')->group(function () {
@@ -21,5 +22,6 @@ Route::prefix('v1')->group(function () {
         Route::post('auth/change-password', [AuthController::class, 'changePassword']);
 
         Route::apiResource('users', UserController::class);
+        Route::apiResource('customers', CustomerController::class);
     });
 });
