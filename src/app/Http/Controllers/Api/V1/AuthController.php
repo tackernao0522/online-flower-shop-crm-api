@@ -32,13 +32,14 @@ class AuthController extends Controller
     {
         $this->validateLogin($request);
 
-        $credentials = $request->only('username', 'password');
+        $credentials = $request->only('email', 'password');
 
-        if (!$token = Auth::attempt($credentials)) {
+        if (!$token = auth('api')->attempt($credentials)) {
             return $this->respondInvalidCredentials();
         }
 
-        $this->updateLastLoginDate(Auth::user());
+        $user = auth('api')->user();
+        $this->updateLastLoginDate($user);
 
         return $this->respondWithToken($token);
     }
@@ -128,14 +129,14 @@ class AuthController extends Controller
         return response()->json([
             'accessToken' => $token,
             'tokenType' => 'bearer',
-            'expiresIn' => config('jwt.ttl') * 60
+            'expiresIn' => auth('api')->factory()->getTTL() * 60
         ]);
     }
 
     protected function validateLogin(Request $request)
     {
         $request->validate([
-            'username' => 'required|string',
+            'email' => 'required|string|email',
             'password' => 'required|string',
         ]);
     }
@@ -167,7 +168,7 @@ class AuthController extends Controller
         ]);
     }
 
-    protected function updateLastLoginDate(User $user)
+    protected function updateLastLoginDate(?User $user)
     {
         $user->last_login_date = Carbon::now();
         $user->save();
