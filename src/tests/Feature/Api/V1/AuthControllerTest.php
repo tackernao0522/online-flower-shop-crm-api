@@ -31,7 +31,7 @@ class AuthControllerTest extends TestCase
 
     private function authenticateUser($user)
     {
-        $token = Auth::guard('api')->login($user);
+        $token = auth('api')->login($user);
         return ['Authorization' => 'Bearer ' . $token, 'Accept' => 'application/json'];
     }
 
@@ -46,7 +46,7 @@ class AuthControllerTest extends TestCase
         ]);
 
         $response = $this->postJson('/api/v1/auth/login', [
-            'username' => $user->username,
+            'email' => $user->email,
             'password' => $password,
         ]);
 
@@ -66,7 +66,7 @@ class AuthControllerTest extends TestCase
         $user = User::factory()->create();
 
         $response = $this->postJson('/api/v1/auth/login', [
-            'username' => $user->username,
+            'email' => $user->email,
             'password' => 'wrong-password',
         ]);
 
@@ -118,7 +118,7 @@ class AuthControllerTest extends TestCase
             ]);
 
         $loginResponse = $this->postJson('/api/v1/auth/login', [
-            'username' => $user->username,
+            'email' => $user->email,
             'password' => 'new-password'
         ]);
 
@@ -236,7 +236,7 @@ class AuthControllerTest extends TestCase
             ->assertJsonStructure(['message']);
 
         $loginResponse = $this->postJson('/api/v1/auth/login', [
-            'username' => $user->username,
+            'email' => $user->email,
             'password' => 'new-password'
         ]);
 
@@ -337,7 +337,7 @@ class AuthControllerTest extends TestCase
         ]);
 
         $response = $this->postJson('/api/v1/auth/login', [
-            'username' => $user->username,
+            'email' => $user->email,
             'password' => 'password',
         ]);
 
@@ -417,7 +417,7 @@ class AuthControllerTest extends TestCase
 
         // 1回目のログイン
         $this->postJson('/api/v1/auth/login', [
-            'username' => $user->username,
+            'email' => $user->email,
             'password' => 'password',
         ]);
 
@@ -429,7 +429,7 @@ class AuthControllerTest extends TestCase
 
         // 2回目のログイン
         $this->postJson('/api/v1/auth/login', [
-            'username' => $user->username,
+            'email' => $user->email,
             'password' => 'password',
         ]);
 
@@ -452,7 +452,7 @@ class AuthControllerTest extends TestCase
 
         // 誤ったパスワードでログイン試行
         $this->postJson('/api/v1/auth/login', [
-            'username' => $user->username,
+            'email' => $user->email,
             'password' => 'wrong-password',
         ]);
 
@@ -461,7 +461,7 @@ class AuthControllerTest extends TestCase
 
         // 正しいパスワードでログイン
         $this->postJson('/api/v1/auth/login', [
-            'username' => $user->username,
+            'email' => $user->email,
             'password' => 'correct-password',
         ]);
 

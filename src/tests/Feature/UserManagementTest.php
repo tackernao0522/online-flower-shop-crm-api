@@ -3,9 +3,9 @@
 namespace Tests\Feature;
 
 use App\Models\User;
-use Hash;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
+use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 use PHPOpenSourceSaver\JWTAuth\Facades\JWTAuth;
 
@@ -26,12 +26,12 @@ class UserManagementTest extends TestCase
 
         // ログイン
         $response = $this->postJson('/api/v1/auth/login', [
-            'username' => $admin->username,
+            'email' => $admin->email,
             'password' => $password,
         ]);
         $response->assertStatus(200);
 
-        $token = JWTAuth::fromUser($admin);
+        $token = $response->json('accessToken');
 
         // 新しいユーザーを作成
         $response = $this->withHeaders([
@@ -43,6 +43,7 @@ class UserManagementTest extends TestCase
             'password' => 'password123',
             'role' => 'STAFF',
         ]);
+        $response->assertStatus(201);
         $userId = $response->json('id');
 
         // ユーザー情報を取得
@@ -60,7 +61,6 @@ class UserManagementTest extends TestCase
             'email' => 'updated@example.com',
         ]);
         $response->assertStatus(200);
-
 
         // ユーザーを削除
         $response = $this->withHeaders([
