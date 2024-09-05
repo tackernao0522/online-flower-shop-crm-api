@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\V1\StoreUserRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\User;
@@ -11,7 +12,9 @@ use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Auth\Events\PasswordReset;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rules\Password as PasswordRules;
+use Illuminate\Validation\ValidationException;
 use PHPOpenSourceSaver\JWTAuth\Exceptions\JWTException;
 
 class AuthController extends Controller
@@ -44,20 +47,29 @@ class AuthController extends Controller
         return $this->respondWithToken($token);
     }
 
-    public function register(Request $request)
+    public function register(StoreUserRequest $request)
     {
-        $this->validateRegister($request);
+        Log::info('Registration attempt:', $request->validated());
 
-        $user = User::create([
-            'username' => $request->username,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'role' => $request->role,
-        ]);
+        try {
+            $user = User::create([
+                'username' => $request->username,
+                'email' => $request->email,
+                'password' => Hash::make($request->password),
+                'role' => $request->role,
+            ]);
 
-        $token = Auth::login($user);
+            Log::info('User created:', ['id' => $user->id]);
 
-        return $this->respondWithToken($token);
+            $token = auth('api')->login($user);
+
+            Log::info('Token generated:', ['token' => $token]);
+
+            return $this->respondWithToken($token);
+        } catch (\Exception $e) {
+            Log::error('Registration failed:', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            return response()->json(['error' => 'Registration failed'], 500);
+        }
     }
 
     public function logout()
@@ -126,10 +138,22 @@ class AuthController extends Controller
 
     protected function respondWithToken($token)
     {
+        $user = auth('api')->user(); // ログイン中のユーザーを取得
+
+        if (!$user) {
+            return response()->json(['error' => '認証ユーザーが見つかりません。'], 500);
+        }
+
         return response()->json([
             'accessToken' => $token,
             'tokenType' => 'bearer',
-            'expiresIn' => auth('api')->factory()->getTTL() * 60
+            'expiresIn' => auth('api')->factory()->getTTL() * 60,
+            'user' => [
+                'id' => $user->id,
+                'username' => $user->username,
+                'email' => $user->email,
+                // 必要に応じて他のフィールドを追加
+            ]
         ]);
     }
 
