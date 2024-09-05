@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Api\V1;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Log;
 
 class StoreUserRequest extends FormRequest
 {
@@ -31,6 +32,7 @@ class StoreUserRequest extends FormRequest
 
     public function messages()
     {
+        Log::info('StoreUserRequest validation rules:', $this->all());
         return [
             'username.required' => 'ユーザー名は必須です。',
             'username.unique' => 'このユーザー名は既に使用されています。',
