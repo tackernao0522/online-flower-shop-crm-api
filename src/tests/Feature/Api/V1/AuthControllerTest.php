@@ -163,7 +163,7 @@ class AuthControllerTest extends TestCase
 
         $response->assertStatus(200)
             ->assertJson([
-                'message' => 'ログアウトしました。'
+                'message' => 'ログアウトしました。オンラインステータスを更新しました。'
             ]);
 
         $this->assertGuest('api');

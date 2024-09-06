@@ -9,8 +9,10 @@ use Illuminate\Support\Facades\Artisan;
 
 class KernelTest extends TestCase
 {
-    /** @test */
-    public function コマンドがスケジュールされていること()
+    /**
+     * @test
+     */
+    function コマンドがスケジュールされていること()
     {
         // TestKernelのインスタンスを作成
         $events = $this->app->make(Dispatcher::class);
@@ -22,12 +24,19 @@ class KernelTest extends TestCase
 
         $events = collect($schedule->events());
 
-        // スケジュールされたコマンドが存在することを確認します（デフォルトではempty）
-        $this->assertTrue($events->isEmpty(), 'スケジュールされたコマンドが存在しますが、テストには記載されていません。');
+        // スケジュールされたコマンドが存在することを確認します
+        $this->assertFalse($events->isEmpty(), 'スケジュールされたコマンドが存在しません。');
+
+        // 'users:update-online-status' コマンドが毎分スケジュールされていることを確認
+        $this->assertTrue($events->contains(function ($event) {
+            return strpos($event->command, 'users:update-online-status') !== false && $event->expression === '* * * * *';
+        }), 'users:update-online-status コマンドが毎分スケジュールされていません。');
     }
 
-    /** @test */
-    public function コマンドが正しく登録されていること()
+    /**
+     * @test
+     */
+    function コマンドが正しく登録されていること()
     {
         // TestKernelのインスタンスを作成
         $events = $this->app->make(Dispatcher::class);
@@ -39,7 +48,7 @@ class KernelTest extends TestCase
         // コマンドがロードされたか確認
         $commands = Artisan::all();
 
-        // "inspire" コマンドが登録されていることを確認します
-        $this->assertArrayHasKey('inspire', $commands, 'inspire コマンドが登録されていません。');
+        // "users:update-online-status" コマンドが登録されていることを確認します
+        $this->assertArrayHasKey('users:update-online-status', $commands, 'users:update-online-status コマンドが登録されていません。');
     }
 }

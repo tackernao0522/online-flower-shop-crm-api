@@ -23,5 +23,9 @@ Route::prefix('v1')->group(function () {
 
         Route::apiResource('users', UserController::class);
         Route::apiResource('customers', CustomerController::class);
+
+        Route::get('/user/online-status', [UserController::class, 'getCurrentUserOnlineStatus']);
+        Route::post('/user/online-status', [UserController::class, 'updateOnlineStatus']);
+        Route::get('/users/{user}/online-status', [UserController::class, 'getOnlineStatus']);
     });
 });
