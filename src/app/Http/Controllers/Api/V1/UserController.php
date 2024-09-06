@@ -133,6 +133,33 @@ class UserController extends Controller
         }
     }
 
+    public function getCurrentUserOnlineStatus(Request $request)
+    {
+        $user = $request->user();
+        return response()->json(['is_online' => $user->is_online]);
+    }
+
+    public function updateOnlineStatus(Request $request)
+    {
+        $user = $request->user();
+        $user->update(['is_online' => $request->input('is_online', true)]);
+        return response()->json(['message' => 'オンラインステータスが更新されました。']);
+    }
+
+    public function getOnlineStatus(User $user)
+    {
+        try {
+            Log::info("getOnlineStatus called for user: {$user->id}");
+            Log::info("User online status: " . ($user->is_online ? '1' : '0'));
+            Log::info("Last activity: " . $user->last_activity);
+            return response()->json(['is_online' => $user->is_online]);
+        } catch (\Exception $e) {
+            Log::error('Error in getOnlineStatus: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
+            return response()->json(['error' => 'An error occurred while fetching the online status'], 500);
+        }
+    }
+
     private function applySorting(Request $request, $query)
     {
         if ($request->has('sort')) {

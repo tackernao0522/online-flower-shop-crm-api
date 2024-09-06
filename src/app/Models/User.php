@@ -26,6 +26,8 @@ class User extends Authenticatable implements JWTSubject, AuthenticatableContrac
         'password',
         'role',
         'last_login_date',
+        'is_online',
+        'last_activity',
     ];
 
     /**

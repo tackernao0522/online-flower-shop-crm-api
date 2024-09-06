@@ -74,8 +74,20 @@ class AuthController extends Controller
 
     public function logout()
     {
+        $user = Auth::guard('api')->user();
+        if ($user) {
+            Log::info("User logging out: {$user->id}");
+            Log::info("User online status before logout: " . ($user->is_online ? '1' : '0'));
+
+            $user->update([
+                'is_online' => false,
+                'last_activity' => now(),
+            ]);
+
+            Log::info("User online status after logout: 0");
+        }
         Auth::guard('api')->logout();
-        return response()->json(['message' => 'ログアウトしました。']);
+        return response()->json(['message' => 'ログアウトしました。オンラインステータスを更新しました。']);
     }
 
     public function refresh()
