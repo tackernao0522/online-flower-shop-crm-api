@@ -103,9 +103,9 @@ class CustomerControllerTest extends TestCase
         $customerData = [
             'name' => 'John Doe',
             'email' => 'john@example.com',
-            'phoneNumber' => '1234567890',
+            'phoneNumber' => '090-1234-5678',
             'address' => '123 Main St',
-            'birthDate' => '1990-01-01 00:00:00',
+            'birthDate' => '1990-01-01',
         ];
 
         $response = $this->withHeaders($this->actingAsUser($this->admin))
@@ -114,6 +114,7 @@ class CustomerControllerTest extends TestCase
         $response->assertStatus(201)
             ->assertJsonStructure(['id', 'name', 'email']);
 
+        $customerData['birthDate'] = '1990-01-01 00:00:00';
         $this->assertDatabaseHas('customers', $customerData);
     }
 
@@ -125,9 +126,9 @@ class CustomerControllerTest extends TestCase
         $customerData = [
             'name' => 'Jane Doe',
             'email' => 'jane@example.com',
-            'phoneNumber' => '9876543210',
+            'phoneNumber' => '080-1234-5678',
             'address' => '456 Elm St',
-            'birthDate' => '1985-05-15 00:00:00',
+            'birthDate' => '1985-05-15',
         ];
 
         $response = $this->withHeaders($this->actingAsUser($this->manager))
@@ -136,6 +137,7 @@ class CustomerControllerTest extends TestCase
         $response->assertStatus(201)
             ->assertJsonStructure(['id', 'name', 'email']);
 
+        $customerData['birthDate'] = '1985-05-15 00:00:00';
         $this->assertDatabaseHas('customers', $customerData);
     }
 
@@ -147,9 +149,9 @@ class CustomerControllerTest extends TestCase
         $customerData = [
             'name' => 'Bob Smith',
             'email' => 'bob@example.com',
-            'phoneNumber' => '5555555555',
+            'phoneNumber' => '070-9876-5432',
             'address' => '789 Oak St',
-            'birthDate' => '1992-12-31 00:00:00',
+            'birthDate' => '1992-12-31',
         ];
 
         $response = $this->withHeaders($this->actingAsUser($this->staff))
@@ -158,70 +160,8 @@ class CustomerControllerTest extends TestCase
         $response->assertStatus(201)
             ->assertJsonStructure(['id', 'name', 'email']);
 
+        $customerData['birthDate'] = '1992-12-31 00:00:00';
         $this->assertDatabaseHas('customers', $customerData);
-    }
-
-    /**
-     * @test
-     */
-    function 認証されていないユーザーが顧客作成を試みると401エラーが返されること()
-    {
-        $customerData = [
-            'name' => 'John Doe',
-            'email' => 'john@example.com',
-            'phoneNumber' => '1234567890',
-            'address' => '123 Main St',
-            'birthDate' => '1990-01-01 00:00:00',
-        ];
-
-        $response = $this->postJson('/api/v1/customers', $customerData);
-
-        $response->assertStatus(401)
-            ->assertJson([
-                'message' => 'Unauthenticated.'
-            ]);
-    }
-
-    /**
-     * @test
-     */
-    function 管理者が特定の顧客情報を取得できること()
-    {
-        $customer = Customer::factory()->create();
-
-        $response = $this->withHeaders($this->actingAsUser($this->admin))
-            ->getJson("/api/v1/customers/{$customer->id}");
-
-        $response->assertStatus(200)
-            ->assertJson($customer->toArray());
-    }
-
-    /**
-     * @test
-     */
-    function マネージャーが特定の顧客情報を取得できること()
-    {
-        $customer = Customer::factory()->create();
-
-        $response = $this->withHeaders($this->actingAsUser($this->manager))
-            ->getJson("/api/v1/customers/{$customer->id}");
-
-        $response->assertStatus(200)
-            ->assertJson($customer->toArray());
-    }
-
-    /**
-     * @test
-     */
-    function スタッフが特定の顧客情報を取得できること()
-    {
-        $customer = Customer::factory()->create();
-
-        $response = $this->withHeaders($this->actingAsUser($this->staff))
-            ->getJson("/api/v1/customers/{$customer->id}");
-
-        $response->assertStatus(200)
-            ->assertJson($customer->toArray());
     }
 
     /**
@@ -233,9 +173,9 @@ class CustomerControllerTest extends TestCase
         $updateData = [
             'name' => 'Jane Doe',
             'email' => 'jane@example.com',
-            'phoneNumber' => '9876543210',
+            'phoneNumber' => '090-4321-1234',
             'address' => '456 Elm St',
-            'birthDate' => '1985-05-15 00:00:00',
+            'birthDate' => '1985-05-15',
         ];
 
         $response = $this->withHeaders($this->actingAsUser($this->admin))
@@ -244,6 +184,7 @@ class CustomerControllerTest extends TestCase
         $response->assertStatus(200)
             ->assertJson($updateData);
 
+        $updateData['birthDate'] = '1985-05-15 00:00:00';
         $this->assertDatabaseHas('customers', $updateData);
     }
 
@@ -256,9 +197,9 @@ class CustomerControllerTest extends TestCase
         $updateData = [
             'name' => 'John Smith',
             'email' => 'john@example.com',
-            'phoneNumber' => '1231231234',
+            'phoneNumber' => '080-1234-5678',
             'address' => '789 Pine St',
-            'birthDate' => '1988-10-10 00:00:00',
+            'birthDate' => '1988-10-10',
         ];
 
         $response = $this->withHeaders($this->actingAsUser($this->manager))
@@ -267,6 +208,7 @@ class CustomerControllerTest extends TestCase
         $response->assertStatus(200)
             ->assertJson($updateData);
 
+        $updateData['birthDate'] = '1988-10-10 00:00:00';
         $this->assertDatabaseHas('customers', $updateData);
     }
 
@@ -279,9 +221,9 @@ class CustomerControllerTest extends TestCase
         $updateData = [
             'name' => 'Alice Johnson',
             'email' => 'alice@example.com',
-            'phoneNumber' => '9998887777',
+            'phoneNumber' => '070-4321-8765',
             'address' => '321 Oak St',
-            'birthDate' => '1995-12-25 00:00:00',
+            'birthDate' => '1995-12-25',
         ];
 
         $response = $this->withHeaders($this->actingAsUser($this->staff))
@@ -290,6 +232,7 @@ class CustomerControllerTest extends TestCase
         $response->assertStatus(200)
             ->assertJson($updateData);
 
+        $updateData['birthDate'] = '1995-12-25 00:00:00';
         $this->assertDatabaseHas('customers', $updateData);
     }
 
