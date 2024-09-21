@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use BeyondCode\LaravelWebSockets\Facades\WebSocketsRouter;
+use BeyondCode\LaravelWebSockets\WebSockets\WebSocketHandler;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -19,6 +21,6 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        WebSocketsRouter::webSocket('/app/{appKey}', WebSocketHandler::class);
     }
 }
