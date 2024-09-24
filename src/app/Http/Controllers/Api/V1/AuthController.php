@@ -164,6 +164,7 @@ class AuthController extends Controller
                 'id' => $user->id,
                 'username' => $user->username,
                 'email' => $user->email,
+                'role' => $user->role,
                 // 必要に応じて他のフィールドを追加
             ]
         ]);
