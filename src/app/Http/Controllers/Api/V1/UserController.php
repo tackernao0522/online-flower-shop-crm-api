@@ -24,15 +24,43 @@ class UserController extends Controller
         try {
             $this->authorize('viewAny', User::class);
 
+            // 1. リクエストパラメータのログ
+            Log::debug('User index request parameters:', $request->all());
+
             $users = User::query();
 
+            // ソートとフィルタリングの適用
             $users = $this->applySorting($request, $users);
             $users = $this->applyFiltering($request, $users);
+
+            // 2. フィルタリングとソート後のクエリログ
+            Log::debug('Query after sorting and filtering:', ['sql' => $users->toSql(), 'bindings' => $users->getBindings()]);
+
+            // 検索条件の適用 (ユーザー名またはメールアドレスでの検索)
+            if ($request->has('search') && !empty($request->input('search'))) {
+                $searchTerm = $request->input('search');
+                $users->where(function ($query) use ($searchTerm) {
+                    $query->where('username', 'LIKE', "%{$searchTerm}%")
+                        ->orWhere('email', 'LIKE', "%{$searchTerm}%");
+                });
+
+                // 3. 検索条件適用後のクエリログ
+                Log::debug('Query after applying search:', ['sql' => $users->toSql(), 'bindings' => $users->getBindings()]);
+            }
+
+            // 4. ページネーション適用直前のクエリログ
+            Log::debug('Final query before pagination:', ['sql' => $users->toSql(), 'bindings' => $users->getBindings()]);
+
+            // ページネーションの適用
             $users = $this->applyPagination($request, $users);
 
-            if ($users->isEmpty()) {
-                throw new ModelNotFoundException('ユーザーが見つかりません。');
-            }
+            // 5. レスポンスデータのログ
+            Log::debug('User index response data:', [
+                'itemsCount' => count($users->items()),
+                'currentPage' => $users->currentPage(),
+                'totalPages' => $users->lastPage(),
+                'totalCount' => $users->total()
+            ]);
 
             return response()->json([
                 'data' => $users->items(),
@@ -42,11 +70,8 @@ class UserController extends Controller
                     'totalCount' => $users->total()
                 ]
             ]);
-        } catch (ModelNotFoundException $e) {
-            Log::debug('ModelNotFoundException caught in index method: ' . $e->getMessage());
-            return $this->errorResponse($e, 404, 'RESOURCE_NOT_FOUND', '指定されたユーザーが見つかりません。');
         } catch (\Exception $e) {
-            Log::debug('Exception caught in index method: ' . $e->getMessage());
+            Log::error('User operation failed: ' . $e->getMessage());
             return $this->errorResponse($e);
         }
     }
@@ -180,9 +205,9 @@ class UserController extends Controller
 
     private function applyFiltering(Request $request, $query)
     {
-        if ($request->has('role')) {
+        if ($request->has('role') && !empty($request->input('role'))) {
             $validRoles = ['ADMIN', 'MANAGER', 'STAFF'];
-            $role = $request->input('role');
+            $role = strtoupper($request->input('role'));
 
             if (!in_array($role, $validRoles)) {
                 throw new \InvalidArgumentException('無効な役割パラメータです。');
@@ -212,9 +237,9 @@ class UserController extends Controller
             $code = 'UNAUTHORIZED';
             $message = 'このアクションを実行する権限がありません。';
         } elseif ($e instanceof ModelNotFoundException) {
-            $status = 404; // 189行目
+            $status = 404;
             $code = 'RESOURCE_NOT_FOUND';
-            $message = '指定されたユーザーが見つかりません。'; // 191行目
+            $message = '指定されたユーザーが見つかりません。';
         } elseif ($e instanceof \InvalidArgumentException) {
             $status = 400;
             $code = 'INVALID_PARAMETER';
