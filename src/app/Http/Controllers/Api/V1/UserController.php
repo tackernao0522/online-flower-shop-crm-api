@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\Log;
+use App\Events\UserCountUpdated;
 
 class UserController extends Controller
 {
@@ -86,6 +87,8 @@ class UserController extends Controller
 
             $user = User::create($validated);
 
+            $this->broadcastUserCount();
+
             return response()->json([
                 'id' => $user->id,
                 'username' => $user->username,
@@ -150,6 +153,8 @@ class UserController extends Controller
         try {
             $this->authorize('delete', $user);
             $user->delete();
+
+            $this->broadcastUserCount();
 
             return response()->json(null, 204);
         } catch (\Exception $e) {
@@ -253,5 +258,11 @@ class UserController extends Controller
                 'message' => $message
             ]
         ], $status);
+    }
+
+    private function broadcastUserCount()
+    {
+        $totalCount = User::count();
+        event(new UserCountUpdated($totalCount));
     }
 }
