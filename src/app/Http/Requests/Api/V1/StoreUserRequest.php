@@ -27,6 +27,7 @@ class StoreUserRequest extends FormRequest
             'email' => 'required|string|email|max:100|unique:users',
             'password' => 'required|string|min:8',
             'role' => 'required|in:ADMIN,MANAGER,STAFF',
+            'is_active' => 'boolean',
         ];
     }
 
@@ -39,6 +40,7 @@ class StoreUserRequest extends FormRequest
             'email.unique' => 'このメールアドレスは既に登録されています。',
             'password.min' => 'パスワードは8文字以上である必要があります。',
             'role.in' => '選択された役割は無効です。',
+            'is_active.boolean' => 'ステータスは真偽値である必要があります。',
         ];
     }
 }

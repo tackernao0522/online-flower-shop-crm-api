@@ -85,6 +85,11 @@ class UserController extends Controller
             $validated = $request->validated();
             $validated['password'] = Hash::make($validated['password']);
 
+            // フロントエンドから送信される isActive を処理
+            $validated['is_active'] = $request->has('isActive')
+                ? $request->boolean('isActive')  // boolean メソッドを使用して確実に真偽値に変換
+                : ($request->has('is_active') ? $request->boolean('is_active') : true);
+
             $user = User::create($validated);
 
             $this->broadcastUserCount();
@@ -94,6 +99,7 @@ class UserController extends Controller
                 'username' => $user->username,
                 'email' => $user->email,
                 'role' => $user->role,
+                'isActive' => $user->is_active,  // レスポンスでは isActive として返す
                 'createdAt' => $user->created_at
             ], 201);
         } catch (AuthorizationException $e) {
@@ -141,6 +147,7 @@ class UserController extends Controller
                 'username' => $user->username,
                 'email' => $user->email,
                 'role' => $user->role,
+                'isActive' => $user->is_active,
                 'updatedAt' => $user->updated_at
             ]);
         } catch (\Exception $e) {

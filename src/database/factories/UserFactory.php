@@ -35,6 +35,7 @@ class UserFactory extends Factory
             'password' => Hash::make('password'),
             'role' => $this->faker->randomElement(['ADMIN', 'MANAGER', 'STAFF']),
             'last_login_date' => null,
+            'is_active' => $this->faker->boolean(90), // 90%の確率でtrueを返す
         ];
     }
 
