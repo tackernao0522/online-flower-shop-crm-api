@@ -38,6 +38,7 @@ class UpdateUserRequest extends FormRequest
             ],
             'password' => 'sometimes|string|min:8',
             'role' => 'sometimes|in:ADMIN,MANAGER,STAFF',
+            'is_active' => 'boolean',
         ];
     }
 }

@@ -18,6 +18,7 @@ class UserSeeder extends Seeder
             'email' => 'admin@example.com',
             'password' => Hash::make('password'),
             'role' => 'ADMIN',
+            'is_active' => true,
         ]);
 
         User::create([
@@ -25,6 +26,7 @@ class UserSeeder extends Seeder
             'email' => 'manager@example.com',
             'password' => Hash::make('password'),
             'role' => 'MANAGER',
+            'is_active' => true,
         ]);
 
         User::create([
@@ -32,6 +34,7 @@ class UserSeeder extends Seeder
             'email' => 'staff@example.com',
             'password' => Hash::make('password'),
             'role' => 'STAFF',
+            'is_active' => true,
         ]);
 
         // ランダムユーザーの生成
@@ -53,6 +56,7 @@ class UserSeeder extends Seeder
                         'password' => Hash::make('password'),
                         'role' => fake()->randomElement(['ADMIN', 'MANAGER', 'STAFF']),
                         'last_login_date' => null,
+                        'is_active' => fake()->boolean(90), // 90%の確率でtrueを返す
                         'created_at' => now(),
                         'updated_at' => now(),
                     ];

@@ -28,6 +28,7 @@ class User extends Authenticatable implements JWTSubject, AuthenticatableContrac
         'last_login_date',
         'is_online',
         'last_activity',
+        'is_active',
     ];
 
     /**
@@ -47,6 +48,7 @@ class User extends Authenticatable implements JWTSubject, AuthenticatableContrac
     protected $casts = [
         'email_verified_at' => 'datetime',
         'role' => 'string',
+        'is_active' => 'boolean',
     ];
 
     public function isAdmin()
