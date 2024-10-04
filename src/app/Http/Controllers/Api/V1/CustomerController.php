@@ -215,10 +215,10 @@ class CustomerController extends Controller
         return round($changeRate, 2);
     }
 
-    private function sanitizePhoneNumber($phoneNumber)
-    {
-        return str_replace('-', '', $phoneNumber);
-    }
+    // private function sanitizePhoneNumber($phoneNumber)
+    // {
+    //     return str_replace('-', '', $phoneNumber);
+    // }
 
     private function formatPhoneNumber($phoneNumber)
     {

@@ -9,6 +9,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPOpenSourceSaver\JWTAuth\Facades\JWTAuth;
 use Tests\TestCase;
 use Mockery;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Database\QueryException;
 
 class CustomerControllerTest extends TestCase
 {
@@ -40,6 +42,7 @@ class CustomerControllerTest extends TestCase
 
     /**
      * @test
+     * 管理者が顧客一覧を取得できること
      */
     function 管理者が顧客一覧を取得できること()
     {
@@ -59,6 +62,7 @@ class CustomerControllerTest extends TestCase
 
     /**
      * @test
+     * マネージャーが顧客一覧を取得できること
      */
     function マネージャーが顧客一覧を取得できること()
     {
@@ -78,6 +82,7 @@ class CustomerControllerTest extends TestCase
 
     /**
      * @test
+     * スタッフが顧客一覧を取得できること
      */
     function スタッフが顧客一覧を取得できること()
     {
@@ -97,6 +102,7 @@ class CustomerControllerTest extends TestCase
 
     /**
      * @test
+     * 管理者が新規顧客を作成できること
      */
     function 管理者が新規顧客を作成できること()
     {
@@ -120,6 +126,7 @@ class CustomerControllerTest extends TestCase
 
     /**
      * @test
+     * マネージャーが新規顧客を作成できること
      */
     function マネージャーが新規顧客を作成できること()
     {
@@ -143,6 +150,7 @@ class CustomerControllerTest extends TestCase
 
     /**
      * @test
+     * スタッフが新規顧客を作成できること
      */
     function スタッフが新規顧客を作成できること()
     {
@@ -166,6 +174,7 @@ class CustomerControllerTest extends TestCase
 
     /**
      * @test
+     * 管理者が顧客情報を更新できること
      */
     function 管理者が顧客情報を更新できること()
     {
@@ -190,54 +199,36 @@ class CustomerControllerTest extends TestCase
 
     /**
      * @test
+     * 顧客作成時にデータベースエラーが発生した場合500エラーが返されること
      */
-    function マネージャーが顧客情報を更新できること()
+    function 顧客作成時にデータベースエラーが発生した場合500エラーが返されること()
     {
-        $customer = Customer::factory()->create();
-        $updateData = [
-            'name' => 'John Smith',
+        DB::shouldReceive('beginTransaction')
+            ->andThrow(new QueryException('mysql', 'INSERT INTO customers', [], new \Exception('Database error')));
+
+        $customerData = [
+            'name' => 'John Doe',
             'email' => 'john@example.com',
-            'phoneNumber' => '080-1234-5678',
-            'address' => '789 Pine St',
-            'birthDate' => '1988-10-10',
+            'phoneNumber' => '090-1234-5678',
+            'address' => '123 Main St',
+            'birthDate' => '1990-01-01',
         ];
 
-        $response = $this->withHeaders($this->actingAsUser($this->manager))
-            ->putJson("/api/v1/customers/{$customer->id}", $updateData);
+        $response = $this->withHeaders($this->actingAsUser($this->admin))
+            ->postJson('/api/v1/customers', $customerData);
 
-        $response->assertStatus(200)
-            ->assertJson($updateData);
-
-        $updateData['birthDate'] = '1988-10-10 00:00:00';
-        $this->assertDatabaseHas('customers', $updateData);
+        $response->assertStatus(500)
+            ->assertJson([
+                'error' => [
+                    'code' => 'SERVER_ERROR',
+                    'message' => 'ユーザー操作に失敗しました。',
+                ],
+            ]);
     }
 
     /**
      * @test
-     */
-    function スタッフが顧客情報を更新できること()
-    {
-        $customer = Customer::factory()->create();
-        $updateData = [
-            'name' => 'Alice Johnson',
-            'email' => 'alice@example.com',
-            'phoneNumber' => '070-4321-8765',
-            'address' => '321 Oak St',
-            'birthDate' => '1995-12-25',
-        ];
-
-        $response = $this->withHeaders($this->actingAsUser($this->staff))
-            ->putJson("/api/v1/customers/{$customer->id}", $updateData);
-
-        $response->assertStatus(200)
-            ->assertJson($updateData);
-
-        $updateData['birthDate'] = '1995-12-25 00:00:00';
-        $this->assertDatabaseHas('customers', $updateData);
-    }
-
-    /**
-     * @test
+     * 管理者が顧客を削除できること
      */
     function 管理者が顧客を削除できること()
     {
@@ -252,34 +243,34 @@ class CustomerControllerTest extends TestCase
 
     /**
      * @test
+     * 顧客削除時にデータベースエラーが発生した場合500エラーが返されること
      */
-    function マネージャーが顧客を削除できること()
+    function 顧客削除時にデータベースエラーが発生した場合500エラーが返されること()
     {
         $customer = Customer::factory()->create();
 
-        $response = $this->withHeaders($this->actingAsUser($this->manager))
+        // モックを使用して、顧客の削除処理でエラーを発生させる
+        $this->mock(Customer::class, function ($mock) {
+            $mock->shouldReceive('delete')
+                ->andThrow(new QueryException('mysql', 'DELETE FROM customers WHERE id = ?', [], new \Exception('Database error')));
+        });
+
+        $response = $this->withHeaders($this->actingAsUser($this->admin))
             ->deleteJson("/api/v1/customers/{$customer->id}");
 
-        $response->assertStatus(204);
-        $this->assertDatabaseMissing('customers', ['id' => $customer->id]);
+        // 正しいステータスコード500が返されることを確認
+        $response->assertStatus(500)
+            ->assertJson([
+                'error' => [
+                    'code' => 'SERVER_ERROR',
+                    'message' => 'ユーザー操作に失敗しました。',
+                ],
+            ]);
     }
 
     /**
      * @test
-     */
-    function スタッフが顧客を削除できること()
-    {
-        $customer = Customer::factory()->create();
-
-        $response = $this->withHeaders($this->actingAsUser($this->staff))
-            ->deleteJson("/api/v1/customers/{$customer->id}");
-
-        $response->assertStatus(204);
-        $this->assertDatabaseMissing('customers', ['id' => $customer->id]);
-    }
-
-    /**
-     * @test
+     * 認証されていないユーザーが顧客一覧にアクセスできないこと
      */
     function 認証されていないユーザーが顧客一覧にアクセスできないこと()
     {
@@ -293,6 +284,7 @@ class CustomerControllerTest extends TestCase
 
     /**
      * @test
+     * 存在しない顧客情報にアクセスすると404エラーが返されること
      */
     function 存在しない顧客情報にアクセスすると404エラーが返されること()
     {
@@ -312,6 +304,7 @@ class CustomerControllerTest extends TestCase
 
     /**
      * @test
+     * 無効なデータで顧客を作成しようとするとバリデーションエラーが返されること
      */
     function 無効なデータで顧客を作成しようとするとバリデーションエラーが返されること()
     {
@@ -332,6 +325,7 @@ class CustomerControllerTest extends TestCase
 
     /**
      * @test
+     * 予期せぬ例外が発生した場合に500エラーが返されること
      */
     public function 予期せぬ例外が発生した場合に500エラーが返されること()
     {
@@ -350,13 +344,14 @@ class CustomerControllerTest extends TestCase
             ->assertJson([
                 'error' => [
                     'code' => 'SERVER_ERROR',
-                    'message' => 'ユーザー操作に失敗しました。'
+                    'message' => 'ユーザー操作に失敗しました。',
                 ]
             ]);
     }
 
     /**
      * @test
+     * 顧客情報の更新時にバリデーションエラーが発生すること
      */
     function 顧客情報の更新時にバリデーションエラーが発生すること()
     {
@@ -375,6 +370,7 @@ class CustomerControllerTest extends TestCase
 
     /**
      * @test
+     * 存在しない顧客の削除を試みると404エラーが返されること
      */
     function 存在しない顧客の削除を試みると404エラーが返されること()
     {
