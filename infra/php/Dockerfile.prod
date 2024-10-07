@@ -8,6 +8,8 @@ ARG ENTRYPOINT_SCRIPT_PATH=./php/docker-entrypoint.prod.sh
 ENV COMPOSER_ALLOW_SUPERUSER=1 \
     COMPOSER_HOME=/composer
 
+RUN ls -la /path/to/expected/location
+
 COPY --from=composer:2.2 /usr/bin/composer /usr/bin/composer
 
 RUN apt-get update && \
