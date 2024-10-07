@@ -37,5 +37,5 @@ RUN chown -R www-data:www-data /var/www
 
 EXPOSE 80
 
-ENTRYPOINT ["docker-entrypoint.sh"]
+ENTRYPOINT ["docker-entrypoint.prod.sh"]
 CMD ["sh", "-c", "php-fpm -D && nginx -g 'daemon off;'"]
