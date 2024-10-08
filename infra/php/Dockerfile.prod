@@ -30,6 +30,9 @@ WORKDIR /var/www
 # Copy existing application directory contents
 COPY ./src /var/www
 
+# Copy .env.production file
+COPY ./src/.env.production /var/www/.env
+
 # Install composer dependencies
 RUN composer install --no-dev --optimize-autoloader
 
