@@ -10,7 +10,7 @@ if [ -z "$APP_KEY" ]; then
 fi
 
 echo "Running database migrations"
-php artisan migrate --force || { echo "Migration failed"; exit 1; }
+php artisan migrate --force --seed || { echo "Migration failed"; exit 1; }
 
 echo "Caching configuration"
 php artisan config:cache || { echo "Config cache failed"; exit 1; }
