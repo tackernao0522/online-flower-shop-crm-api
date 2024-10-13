@@ -33,6 +33,8 @@ WORKDIR /var/www
 # アプリケーションのコードをコピー
 COPY ./src /var/www
 
+RUN composer require aws/aws-sdk-php
+
 # Composerの依存関係をインストール
 RUN composer install --no-dev --optimize-autoloader
 
