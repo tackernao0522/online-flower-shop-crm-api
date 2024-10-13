@@ -9,11 +9,25 @@ use Laravel\Sanctum\HasApiTokens;
 use PHPOpenSourceSaver\JWTAuth\Contracts\JWTSubject;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Contracts\Auth\Authenticatable as AuthenticatableContract;
-use Mockery\Adapter\Phpunit\MockeryPHPUnitIntegration;
 
 class User extends Authenticatable implements JWTSubject, AuthenticatableContract
 {
-    use HasApiTokens, HasFactory, Notifiable, HasUuids, MockeryPHPUnitIntegration;
+    use HasApiTokens, HasFactory, Notifiable, HasUuids;
+
+    // 開発環境とテスト環境でのみMockeryトレイトを使用
+    public function initializeMockery()
+    {
+        if (app()->environment('local', 'testing')) {
+            $this->initializeMockeryPHPUnitIntegration();
+        }
+    }
+
+    protected function initializeMockeryPHPUnitIntegration()
+    {
+        $this->mockeryPHPUnitIntegration = trait_exists('\Mockery\Adapter\Phpunit\MockeryPHPUnitIntegration')
+            ? \Mockery\Adapter\Phpunit\MockeryPHPUnitIntegration::class
+            : null;
+    }
 
     /**
      * The attributes that are mass assignable.
