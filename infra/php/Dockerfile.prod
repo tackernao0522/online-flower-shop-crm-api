@@ -11,7 +11,7 @@ COPY --from=composer:2.2 /usr/bin/composer /usr/bin/composer
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     nginx \
-    git unzip libzip-dev libicu-dev libonig-dev awscli jq && \
+    git unzip libzip-dev libicu-dev libonig-dev && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
     docker-php-ext-install intl pdo_mysql zip bcmath
@@ -27,18 +27,11 @@ COPY ./infra/nginx/default.prod.conf /etc/nginx/conf.d/default.conf
 COPY ./infra/php/docker-entrypoint.prod.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
-# 環境変数を設定するスクリプトを追加
-COPY ./infra/php/set-env-secrets.sh /usr/local/bin/set-env-secrets.sh
-RUN chmod +x /usr/local/bin/set-env-secrets.sh
-
 # 作業ディレクトリを指定
 WORKDIR /var/www
 
 # アプリケーションのコードをコピー
 COPY ./src /var/www
-
-# AWS SDKをインストール
-RUN composer require aws/aws-sdk-php
 
 # Composerの依存関係をインストール
 RUN composer install --no-dev --optimize-autoloader
@@ -49,8 +42,8 @@ RUN chown -R www-data:www-data /var/www
 # ポート80を公開
 EXPOSE 80
 
-# エントリポイントを変更
-ENTRYPOINT ["/bin/sh", "-c", "/usr/local/bin/set-env-secrets.sh && /usr/local/bin/docker-entrypoint.sh"]
+# エントリポイントスクリプトを実行
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 
 # サービスの起動
 CMD ["sh", "-c", "php-fpm -D && nginx -g 'daemon off;'"]
