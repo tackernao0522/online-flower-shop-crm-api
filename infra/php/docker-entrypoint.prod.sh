@@ -3,23 +3,18 @@ set -e
 
 echo "Starting entrypoint script"
 
-# 必須なシークレットが全て設定されているか確認
-REQUIRED_SECRETS=("APP_KEY" "DB_USERNAME" "DB_PASSWORD" "JWT_SECRET" "PUSHER_APP_KEY" "PUSHER_APP_SECRET")
-for SECRET in "${REQUIRED_SECRETS[@]}"; do
-  if [ -z "${!SECRET}" ]; then
-    echo "Error: $SECRET is not set. Please check your environment or AWS Secrets Manager configuration."
+# Check if APP_KEY is set
+if [ -z "$APP_KEY" ]; then
+    echo "Error: APP_KEY is not set. Please configure the APP_KEY in your environment."
     exit 1
-  fi
-done
+fi
 
-echo "All required secrets are set."
-
-# データベースのマイグレーションを実行
 echo "Running database migrations"
 php artisan migrate --force
 
-# シーディングが必要かどうかをチェック（例：adminユーザーの存在確認）
+# シーディングが必要かどうかをチェック（例：admin ユーザーの存在確認）
 ADMIN_EXISTS=$(php artisan tinker --execute="echo \App\Models\User::where('username', 'admin')->exists() ? 'true' : 'false';")
+
 if [ "$ADMIN_EXISTS" = "false" ]; then
     echo "Running database seeder"
     php artisan db:seed --force
@@ -27,7 +22,6 @@ else
     echo "Skipping database seeder as admin user already exists"
 fi
 
-# キャッシュの生成と最適化
 echo "Caching configuration"
 php artisan config:cache || { echo "Config cache failed"; exit 1; }
 
@@ -42,5 +36,4 @@ php artisan optimize || { echo "Optimization failed"; exit 1; }
 
 echo "Entrypoint script completed successfully"
 
-# コンテナをフォアグラウンドで実行
 exec "$@"
