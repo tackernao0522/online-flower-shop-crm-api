@@ -12,30 +12,10 @@ class UserSeeder extends Seeder
 {
     public function run(): void
     {
-        // 管理者、マネージャー、スタッフの固定ユーザーを作成
-        User::create([
-            'username' => 'admin',
-            'email' => 'admin@example.com',
-            'password' => Hash::make('password'),
-            'role' => 'ADMIN',
-            'is_active' => true,
-        ]);
-
-        User::create([
-            'username' => 'manager',
-            'email' => 'manager@example.com',
-            'password' => Hash::make('password'),
-            'role' => 'MANAGER',
-            'is_active' => true,
-        ]);
-
-        User::create([
-            'username' => 'staff',
-            'email' => 'staff@example.com',
-            'password' => Hash::make('password'),
-            'role' => 'STAFF',
-            'is_active' => true,
-        ]);
+        // 管理者、マネージャー、スタッフの固定ユーザーを作成（既存でない場合のみ）
+        $this->createUserIfNotExists('admin', 'admin@example.com', 'ADMIN');
+        $this->createUserIfNotExists('manager', 'manager@example.com', 'MANAGER');
+        $this->createUserIfNotExists('staff', 'staff@example.com', 'STAFF');
 
         // ランダムユーザーの生成
         $count = 500; // 合計500人
@@ -51,8 +31,8 @@ class UserSeeder extends Seeder
                 for ($j = 0; $j < min($chunkSize, $count - $i); $j++) {
                     $users[] = [
                         'id' => Str::uuid(),
-                        'username' => fake()->unique()->userName(),
-                        'email' => fake()->unique()->safeEmail(),
+                        'username' => $this->generateUniqueUsername(),
+                        'email' => $this->generateUniqueEmail(),
                         'password' => Hash::make('password'),
                         'role' => fake()->randomElement(['ADMIN', 'MANAGER', 'STAFF']),
                         'last_login_date' => null,
@@ -73,5 +53,39 @@ class UserSeeder extends Seeder
 
         // 最終的な総ユーザー数を表示
         $this->command->info("Total users after seeding: " . $totalCount);
+    }
+
+    private function createUserIfNotExists(string $username, string $email, string $role): void
+    {
+        if (!User::where('username', $username)->exists()) {
+            User::create([
+                'username' => $username,
+                'email' => $email,
+                'password' => Hash::make('password'),
+                'role' => $role,
+                'is_active' => true,
+            ]);
+            $this->command->info("Created $role user: $username");
+        } else {
+            $this->command->info("$role user $username already exists. Skipping.");
+        }
+    }
+
+    private function generateUniqueUsername(): string
+    {
+        do {
+            $username = fake()->unique()->userName();
+        } while (User::where('username', $username)->exists());
+
+        return $username;
+    }
+
+    private function generateUniqueEmail(): string
+    {
+        do {
+            $email = fake()->unique()->safeEmail();
+        } while (User::where('email', $email)->exists());
+
+        return $email;
     }
 }
