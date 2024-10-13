@@ -22,7 +22,9 @@ return [
 
     'app_provider' => BeyondCode\LaravelWebSockets\Apps\ConfigAppProvider::class,
 
-    'allowed_origins' => array_filter(explode(',', env('ALLOWED_ORIGINS', env('FRONTEND_URL', 'http://localhost:3000')))),
+    'allowed_origins' => [
+        //
+    ],
 
     'max_request_size_in_kb' => 250,
 
