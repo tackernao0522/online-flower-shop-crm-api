@@ -5,8 +5,6 @@ ENV COMPOSER_ALLOW_SUPERUSER=1 \
     COMPOSER_HOME=/composer
 
 # AWS関連の環境変数を追加
-ARG AWS_ACCESS_KEY_ID
-ARG AWS_SECRET_ACCESS_KEY
 ARG AWS_DEFAULT_REGION
 ARG AWS_SECRETS_MANAGER_SECRET_NAME
 ENV AWS_DEFAULT_REGION=$AWS_DEFAULT_REGION
@@ -38,12 +36,14 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 # 作業ディレクトリを指定
 WORKDIR /var/www
 
+# Composer関連ファイルをコピー
+COPY composer.json composer.lock ./
+
+# Composerの依存関係をインストール
+RUN composer install --no-dev --optimize-autoloader
+
 # アプリケーションのコードをコピー
 COPY ./src /var/www
-
-# Composerの依存関係をインストール（AWS SDKを含む）
-RUN composer install --no-dev --optimize-autoloader && \
-    composer require aws/aws-sdk-php aws/aws-sdk-php-laravel
 
 # 権限設定
 RUN chown -R www-data:www-data /var/www
