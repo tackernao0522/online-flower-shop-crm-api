@@ -11,9 +11,11 @@ class AppServiceProvider extends ServiceProvider
     /**
      * Register any application services.
      */
-    public function register(): void
+    public function register()
     {
-        //
+        if ($this->app->environment('production')) {
+            $this->registerAwsServiceProvider();
+        }
     }
 
     /**
@@ -22,5 +24,16 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         WebSocketsRouter::webSocket('/app/{appKey}', WebSocketHandler::class);
+    }
+
+    /**
+     * Register AWS Service Provider if it exists.
+     */
+    private function registerAwsServiceProvider()
+    {
+        $awsProviderClass = 'Aws\Laravel\AwsServiceProvider';
+        if (class_exists($awsProviderClass)) {
+            $this->app->register($awsProviderClass);
+        }
     }
 }
