@@ -22,20 +22,16 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/* && \
     docker-php-ext-install intl pdo_mysql zip bcmath pdo
 
-# PHP設定ファイルをコピー
-ARG PHP_INI_PATH
-COPY ${PHP_INI_PATH} /usr/local/etc/php/php.ini
+# PHPのproduction用設定ファイルをコピー
+COPY infra/php/php.prod.ini /usr/local/etc/php/php.prod.ini
 
-# Nginx設定ファイルをコピー
-ARG NGINX_CONF_PATH
-ARG DEFAULT_CONF_PATH
-COPY ${NGINX_CONF_PATH} /etc/nginx/nginx.conf
-COPY ${DEFAULT_CONF_PATH} /etc/nginx/conf.d/default.conf
+# Nginxのproduction用設定ファイルをコピー
+COPY infra/nginx/nginx.prod.conf /etc/nginx/nginx.prod.conf
+COPY infra/nginx/default.prod.conf /etc/nginx/conf.d/default.prod.conf
 
-# エントリポイントスクリプトをコピー
-ARG ENTRYPOINT_SCRIPT_PATH
-COPY ${ENTRYPOINT_SCRIPT_PATH} /usr/local/bin/docker-entrypoint.sh
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+# エントリポイントスクリプト（production用）をコピー
+COPY infra/php/docker-entrypoint.prod.sh /usr/local/bin/docker-entrypoint.prod.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.prod.sh
 
 # 作業ディレクトリを指定
 WORKDIR /var/www
@@ -52,14 +48,14 @@ RUN php -d memory_limit=-1 /usr/bin/composer install --no-dev --optimize-autoloa
     exit 1; \
     fi
 
-# 権限設定
+# アプリケーションの権限設定
 RUN chown -R www-data:www-data /var/www
 
 # ポート80を公開
 EXPOSE 80
 
-# エントリポイントスクリプトを実行
-ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+# エントリポイントスクリプトを実行（production用）
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.prod.sh"]
 
-# サービスの起動
+# サービスの起動コマンド
 CMD ["sh", "-c", "php-fpm -D && nginx -g 'daemon off;'"]
