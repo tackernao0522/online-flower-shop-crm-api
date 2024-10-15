@@ -20,30 +20,31 @@ RUN apt-get update && \
     git unzip libzip-dev libicu-dev libonig-dev && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
-    docker-php-ext-install intl pdo_mysql zip bcmath
+    docker-php-ext-install intl pdo_mysql zip bcmath pdo
 
 # PHP設定ファイルをコピー
-COPY ./infra/php/php.prod.ini /usr/local/etc/php/php.ini
+ARG PHP_INI_PATH
+COPY ${PHP_INI_PATH} /usr/local/etc/php/php.ini
 
 # Nginx設定ファイルをコピー
-COPY ./infra/nginx/nginx.prod.conf /etc/nginx/nginx.conf
-COPY ./infra/nginx/default.prod.conf /etc/nginx/conf.d/default.conf
+ARG NGINX_CONF_PATH
+ARG DEFAULT_CONF_PATH
+COPY ${NGINX_CONF_PATH} /etc/nginx/nginx.conf
+COPY ${DEFAULT_CONF_PATH} /etc/nginx/conf.d/default.conf
 
 # エントリポイントスクリプトをコピー
-COPY ./infra/php/docker-entrypoint.prod.sh /usr/local/bin/docker-entrypoint.sh
+ARG ENTRYPOINT_SCRIPT_PATH
+COPY ${ENTRYPOINT_SCRIPT_PATH} /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # 作業ディレクトリを指定
 WORKDIR /var/www
 
-# Composer関連ファイルをコピー
-COPY src/composer.json src/composer.lock ./
-
-# Composerの依存関係をインストール
-RUN composer install --no-dev --optimize-autoloader
-
 # アプリケーションのコードをコピー
 COPY ./src /var/www
+
+# Composerの依存関係をインストール
+RUN php -d memory_limit=-1 /usr/bin/composer install --no-dev --optimize-autoloader 2>&1 | tee /tmp/composer_log.txt || (cat /tmp/composer_log.txt && exit 1)
 
 # 権限設定
 RUN chown -R www-data:www-data /var/www
