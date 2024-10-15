@@ -17,7 +17,7 @@ COPY --from=composer:2.2 /usr/bin/composer /usr/bin/composer
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     nginx \
-    git unzip libzip-dev libicu-dev libonig-dev && \
+    git unzip libzip-dev libicu-dev libonig-dev bash && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
     docker-php-ext-install intl pdo_mysql zip bcmath pdo
@@ -44,8 +44,8 @@ WORKDIR /var/www
 COPY ./src /var/www
 
 # Composerの依存関係をインストール
-RUN set -o pipefail && \
-    php -d memory_limit=-1 /usr/bin/composer install --no-dev --optimize-autoloader 2>&1 | tee /tmp/composer_log.txt && \
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+RUN php -d memory_limit=-1 /usr/bin/composer install --no-dev --optimize-autoloader 2>&1 | tee /tmp/composer_log.txt && \
     if [ $? -ne 0 ]; then \
     echo "Composer install failed. Log:" && \
     cat /tmp/composer_log.txt && \
