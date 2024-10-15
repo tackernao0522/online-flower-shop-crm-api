@@ -37,7 +37,7 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 WORKDIR /var/www
 
 # Composer関連ファイルをコピー
-COPY composer.json composer.lock ./
+COPY src/composer.json src/composer.lock ./
 
 # Composerの依存関係をインストール
 RUN composer install --no-dev --optimize-autoloader
