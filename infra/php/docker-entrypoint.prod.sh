@@ -3,14 +3,11 @@ set -e
 
 echo "Starting entrypoint script"
 
-# Check if required environment variables are set
-required_vars="APP_KEY DB_USERNAME DB_PASSWORD PUSHER_APP_ID PUSHER_APP_KEY PUSHER_APP_SECRET PUSHER_APP_CLUSTER JWT_SECRET"
-for var in $required_vars; do
-    if [ -z "$(eval echo \$$var)" ]; then
-        echo "Error: $var is not set. Please check your Secrets Manager configuration."
-        exit 1
-    fi
-done
+# Check if APP_KEY is set
+if [ -z "$APP_KEY" ]; then
+    echo "Error: APP_KEY is not set. Please configure the APP_KEY in your environment."
+    exit 1
+fi
 
 echo "Running database migrations"
 php artisan migrate --force
