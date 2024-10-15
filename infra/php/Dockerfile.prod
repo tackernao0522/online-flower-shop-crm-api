@@ -44,7 +44,13 @@ WORKDIR /var/www
 COPY ./src /var/www
 
 # Composerの依存関係をインストール
-RUN php -d memory_limit=-1 /usr/bin/composer install --no-dev --optimize-autoloader 2>&1 | tee /tmp/composer_log.txt || (cat /tmp/composer_log.txt && exit 1)
+RUN set -o pipefail && \
+    php -d memory_limit=-1 /usr/bin/composer install --no-dev --optimize-autoloader 2>&1 | tee /tmp/composer_log.txt && \
+    if [ $? -ne 0 ]; then \
+    echo "Composer install failed. Log:" && \
+    cat /tmp/composer_log.txt && \
+    exit 1; \
+    fi
 
 # 権限設定
 RUN chown -R www-data:www-data /var/www
