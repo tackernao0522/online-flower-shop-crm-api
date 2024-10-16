@@ -7,9 +7,19 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
+use Faker\Factory as FakerFactory;
 
 class UserSeeder extends Seeder
 {
+    // Fakerのインスタンスをクラスのプロパティとして保持
+    protected $faker;
+
+    public function __construct()
+    {
+        // Fakerインスタンスの初期化
+        $this->faker = FakerFactory::create();
+    }
+
     public function run(): void
     {
         // 管理者、マネージャー、スタッフの固定ユーザーを作成（既存でない場合のみ）
@@ -34,9 +44,9 @@ class UserSeeder extends Seeder
                         'username' => $this->generateUniqueUsername(),
                         'email' => $this->generateUniqueEmail(),
                         'password' => Hash::make('password'),
-                        'role' => fake()->randomElement(['ADMIN', 'MANAGER', 'STAFF']),
+                        'role' => $this->faker->randomElement(['ADMIN', 'MANAGER', 'STAFF']),
                         'last_login_date' => null,
-                        'is_active' => fake()->boolean(90), // 90%の確率でtrueを返す
+                        'is_active' => $this->faker->boolean(90), // 90%の確率でtrueを返す
                         'created_at' => now(),
                         'updated_at' => now(),
                     ];
@@ -74,7 +84,7 @@ class UserSeeder extends Seeder
     private function generateUniqueUsername(): string
     {
         do {
-            $username = fake()->unique()->userName();
+            $username = $this->faker->unique()->userName();
         } while (User::where('username', $username)->exists());
 
         return $username;
@@ -83,7 +93,7 @@ class UserSeeder extends Seeder
     private function generateUniqueEmail(): string
     {
         do {
-            $email = fake()->unique()->safeEmail();
+            $email = $this->faker->unique()->safeEmail();
         } while (User::where('email', $email)->exists());
 
         return $email;
