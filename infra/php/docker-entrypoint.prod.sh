@@ -34,6 +34,12 @@ php artisan view:cache || { echo "View cache failed"; exit 1; }
 echo "Optimizing application"
 php artisan optimize || { echo "Optimization failed"; exit 1; }
 
+# WebSocketサーバーの起動
+if [ "$RUN_WEBSOCKETS" = "true" ]; then
+  echo "Starting WebSocket server on port 6001"
+  php artisan websockets:serve &
+fi
+
 echo "Entrypoint script completed successfully"
 
 exec "$@"
