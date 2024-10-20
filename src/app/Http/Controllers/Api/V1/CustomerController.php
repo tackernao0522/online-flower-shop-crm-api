@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Log;
 use App\Events\CustomerCountUpdated;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Validation\ValidationException;
 
 class CustomerController extends Controller
 {
@@ -22,6 +23,8 @@ class CustomerController extends Controller
     public function index(Request $request)
     {
         try {
+            Log::info('Customer index method called', ['request' => $request->all()]);
+
             $query = Customer::query();
 
             $validated = $request->validate([
@@ -48,7 +51,13 @@ class CustomerController extends Controller
 
             event(new CustomerCountUpdated($totalCount, $previousTotalCount, $changeRate));
 
-            Log::info("顧客一覧を取得しました。総数: {$totalCount}, 前回の総数: {$previousTotalCount}, 変化率: {$changeRate}%");
+            Log::info("顧客一覧を取得しました。", [
+                '総数' => $totalCount,
+                '前回の総数' => $previousTotalCount,
+                '変化率' => $changeRate . '%',
+                'ページ' => $customers->currentPage(),
+                '総ページ数' => $customers->lastPage()
+            ]);
 
             return response()->json([
                 'data' => $customers->map(function ($customer) {
@@ -64,19 +73,40 @@ class CustomerController extends Controller
                 ]
             ]);
         } catch (QueryException $e) {
-            Log::error('データベースエラーが発生しました: ' . $e->getMessage(), ['exception' => $e]);
+            Log::error('データベースエラーが発生しました: ' . $e->getMessage(), [
+                'exception' => $e,
+                'sql' => $e->getSql(),
+                'bindings' => $e->getBindings(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return response()->json([
                 'error' => [
                     'code' => 'DATABASE_ERROR',
                     'message' => 'データベース操作中にエラーが発生しました。',
+                    'details' => config('app.debug') ? $e->getMessage() : null
                 ]
             ], 500);
+        } catch (ValidationException $e) {
+            Log::warning('バリデーションエラーが発生しました: ' . $e->getMessage(), [
+                'errors' => $e->errors(),
+            ]);
+            return response()->json([
+                'error' => [
+                    'code' => 'VALIDATION_ERROR',
+                    'message' => '入力データが無効です。',
+                    'details' => $e->errors()
+                ]
+            ], 422);
         } catch (\Exception $e) {
-            Log::error('エラーが発生しました: ' . $e->getMessage(), ['exception' => $e]);
+            Log::error('予期せぬエラーが発生しました: ' . $e->getMessage(), [
+                'exception' => $e,
+                'trace' => $e->getTraceAsString()
+            ]);
             return response()->json([
                 'error' => [
                     'code' => 'SERVER_ERROR',
                     'message' => '予期せぬエラーが発生しました。',
+                    'details' => config('app.debug') ? $e->getMessage() : null
                 ]
             ], 500);
         }
