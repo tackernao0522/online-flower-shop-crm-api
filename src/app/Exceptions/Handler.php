@@ -8,6 +8,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Auth\AuthenticationException;
+use Illuminate\Support\Facades\Log;
 
 class Handler extends ExceptionHandler
 {
@@ -32,6 +33,36 @@ class Handler extends ExceptionHandler
         });
     }
 
+    /**
+     * Report or log an exception.
+     *
+     * @param  \Throwable  $exception
+     * @return void
+     *
+     * @throws \Exception
+     */
+    public function report(Throwable $exception)
+    {
+        $context = [
+            'file' => $exception->getFile(),
+            'line' => $exception->getLine(),
+            'trace' => $exception->getTraceAsString(),
+        ];
+
+        Log::error($exception->getMessage(), $context);
+
+        parent::report($exception);
+    }
+
+    /**
+     * Render an exception into an HTTP response.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  \Throwable  $exception
+     * @return \Symfony\Component\HttpFoundation\Response
+     *
+     * @throws \Throwable
+     */
     public function render($request, Throwable $exception)
     {
         if ($exception instanceof AuthorizationException) {
@@ -53,24 +84,31 @@ class Handler extends ExceptionHandler
         }
 
         if ($exception instanceof ValidationException) {
-            return parent::render($request, $exception);
+            return response()->json([
+                'error' => [
+                    'code' => 'VALIDATION_ERROR',
+                    'message' => '入力データが無効です。',
+                    'details' => $exception->errors()
+                ]
+            ], 422);
         }
 
         if ($exception instanceof AuthenticationException) {
             return response()->json([
-                'message' => 'Unauthenticated.'
+                'error' => [
+                    'code' => 'UNAUTHENTICATED',
+                    'message' => '認証されていません。'
+                ]
             ], 401);
         }
 
-        if ($exception instanceof \Exception) {
-            return response()->json([
-                'error' => [
-                    'code' => 'SERVER_ERROR',
-                    'message' => 'ユーザー操作に失敗しました。'
-                ]
-            ], 500);
-        }
-
-        return parent::render($request, $exception);
+        // その他の例外
+        return response()->json([
+            'error' => [
+                'code' => 'SERVER_ERROR',
+                'message' => '予期せぬエラーが発生しました。',
+                'details' => config('app.debug') ? $exception->getMessage() : null
+            ]
+        ], 500);
     }
 }
