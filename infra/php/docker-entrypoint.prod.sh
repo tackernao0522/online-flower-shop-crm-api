@@ -12,15 +12,8 @@ fi
 echo "Running database migrations"
 php artisan migrate --force
 
-# シーディングが必要かどうかをチェック（例：admin ユーザーの存在確認）
-ADMIN_EXISTS=$(php artisan tinker --execute="echo \App\Models\User::where('username', 'admin')->exists() ? 'true' : 'false';")
-
-if [ "$ADMIN_EXISTS" = "false" ]; then
-    echo "Running database seeder"
-    php artisan db:seed --force
-else
-    echo "Skipping database seeder as admin user already exists"
-fi
+echo "Running database seeder"
+php artisan db:seed --force
 
 echo "Caching configuration"
 php artisan config:cache || { echo "Config cache failed"; exit 1; }
