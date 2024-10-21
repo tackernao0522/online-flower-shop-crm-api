@@ -17,7 +17,10 @@ RUN apt-get update && \
     docker-php-ext-install intl pdo_mysql zip bcmath
 
 # SSM エージェントのインストール
-RUN apt-get update && apt-get install -y amazon-ssm-agent && \
+RUN apt-get update && \
+    apt-get install -y curl && \
+    curl "https://s3.amazonaws.com/amazon-ssm-${AWS_REGION}/latest/debian_amd64/amazon-ssm-agent.deb" -o "amazon-ssm-agent.deb" && \
+    dpkg -i amazon-ssm-agent.deb && \
     systemctl enable amazon-ssm-agent && \
     systemctl start amazon-ssm-agent
 
