@@ -16,6 +16,11 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/* && \
     docker-php-ext-install intl pdo_mysql zip bcmath
 
+# SSM エージェントのインストール
+RUN apt-get update && apt-get install -y amazon-ssm-agent && \
+    systemctl enable amazon-ssm-agent && \
+    systemctl start amazon-ssm-agent
+
 # PHP設定ファイルをコピー
 COPY ./infra/php/php.prod.ini /usr/local/etc/php/php.ini
 
