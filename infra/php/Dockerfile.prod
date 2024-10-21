@@ -16,10 +16,14 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/* && \
     docker-php-ext-install intl pdo_mysql zip bcmath
 
+# ビルド引数を利用してAWS_REGIONを設定
+ARG AWS_REGION
+ENV AWS_REGION=${AWS_REGION}
+
 # SSM エージェントのインストール
 RUN apt-get update && \
     apt-get install -y curl && \
-    curl "https://s3.amazonaws.com/amazon-ssm-${AWS_REGION}/latest/debian_amd64/amazon-ssm-agent.deb" -o "amazon-ssm-agent.deb" && \
+    curl "https://s3.${AWS_REGION}.amazonaws.com/amazon-ssm-${AWS_REGION}/latest/debian_amd64/amazon-ssm-agent.deb" -o "amazon-ssm-agent.deb" && \
     dpkg -i amazon-ssm-agent.deb && \
     systemctl enable amazon-ssm-agent && \
     systemctl start amazon-ssm-agent
