@@ -25,8 +25,7 @@ RUN apt-get update && \
     apt-get install -y curl && \
     curl "https://s3.${AWS_REGION}.amazonaws.com/amazon-ssm-${AWS_REGION}/latest/debian_amd64/amazon-ssm-agent.deb" -o "amazon-ssm-agent.deb" && \
     dpkg -i amazon-ssm-agent.deb && \
-    systemctl enable amazon-ssm-agent && \
-    systemctl start amazon-ssm-agent
+    amazon-ssm-agent start
 
 # PHP設定ファイルをコピー
 COPY ./infra/php/php.prod.ini /usr/local/etc/php/php.ini
