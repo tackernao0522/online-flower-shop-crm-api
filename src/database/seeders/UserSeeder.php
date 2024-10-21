@@ -7,23 +7,26 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
+use Faker\Factory as Faker;
 
 class UserSeeder extends Seeder
 {
     public function run(): void
     {
+        $faker = Faker::create();
+
         // 管理者、マネージャー、スタッフの固定ユーザーを作成（既存でない場合のみ）
         $this->createUserIfNotExists('admin', 'admin@example.com', 'ADMIN');
         $this->createUserIfNotExists('manager', 'manager@example.com', 'MANAGER');
         $this->createUserIfNotExists('staff', 'staff@example.com', 'STAFF');
 
         // ランダムユーザーの生成
-        $count = 500; // 合計500人
-        $chunkSize = 100; // 100人ずつ挿入
+        $count = 50; // 合計500人
+        $chunkSize = 10; // 100人ずつ挿入
         $totalCount = 0;
 
         // トランザクションを使用してバルクインサート
-        DB::transaction(function () use ($count, $chunkSize, &$totalCount) {
+        DB::transaction(function () use ($count, $chunkSize, &$totalCount, $faker) {
             for ($i = 0; $i < $count; $i += $chunkSize) {
                 $users = [];
 
@@ -31,12 +34,12 @@ class UserSeeder extends Seeder
                 for ($j = 0; $j < min($chunkSize, $count - $i); $j++) {
                     $users[] = [
                         'id' => Str::uuid(),
-                        'username' => $this->generateUniqueUsername(),
-                        'email' => $this->generateUniqueEmail(),
+                        'username' => $this->generateUniqueUsername($faker),
+                        'email' => $this->generateUniqueEmail($faker),
                         'password' => Hash::make('password'),
-                        'role' => fake()->randomElement(['ADMIN', 'MANAGER', 'STAFF']),
+                        'role' => $faker->randomElement(['ADMIN', 'MANAGER', 'STAFF']),
                         'last_login_date' => null,
-                        'is_active' => fake()->boolean(90), // 90%の確率でtrueを返す
+                        'is_active' => $faker->boolean(90), // 90%の確率でtrueを返す
                         'created_at' => now(),
                         'updated_at' => now(),
                     ];
@@ -71,19 +74,19 @@ class UserSeeder extends Seeder
         }
     }
 
-    private function generateUniqueUsername(): string
+    private function generateUniqueUsername($faker): string
     {
         do {
-            $username = fake()->unique()->userName();
+            $username = $faker->unique()->userName();
         } while (User::where('username', $username)->exists());
 
         return $username;
     }
 
-    private function generateUniqueEmail(): string
+    private function generateUniqueEmail($faker): string
     {
         do {
-            $email = fake()->unique()->safeEmail();
+            $email = $faker->unique()->safeEmail();
         } while (User::where('email', $email)->exists());
 
         return $email;
