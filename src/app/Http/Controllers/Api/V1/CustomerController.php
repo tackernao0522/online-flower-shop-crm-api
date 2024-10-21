@@ -49,7 +49,15 @@ class CustomerController extends Controller
                 Cache::put('change_rate', $changeRate, now()->addDay());
             }
 
-            event(new CustomerCountUpdated($totalCount, $previousTotalCount, $changeRate));
+            try {
+                event(new CustomerCountUpdated($totalCount, $previousTotalCount, $changeRate));
+            } catch (\Exception $e) {
+                Log::error('Failed to dispatch CustomerCountUpdated event: ' . $e->getMessage(), [
+                    'exception' => $e,
+                    'trace' => $e->getTraceAsString()
+                ]);
+                // イベントディスパッチの失敗を無視して続行
+            }
 
             Log::info("顧客一覧を取得しました。", [
                 '総数' => $totalCount,
@@ -79,36 +87,18 @@ class CustomerController extends Controller
                 'bindings' => $e->getBindings(),
                 'trace' => $e->getTraceAsString()
             ]);
-            return response()->json([
-                'error' => [
-                    'code' => 'DATABASE_ERROR',
-                    'message' => 'データベース操作中にエラーが発生しました。',
-                    'details' => config('app.debug') ? $e->getMessage() : null
-                ]
-            ], 500);
+            return $this->errorResponse('DATABASE_ERROR', 'データベース操作中にエラーが発生しました。', 500, $e);
         } catch (ValidationException $e) {
             Log::warning('バリデーションエラーが発生しました: ' . $e->getMessage(), [
                 'errors' => $e->errors(),
             ]);
-            return response()->json([
-                'error' => [
-                    'code' => 'VALIDATION_ERROR',
-                    'message' => '入力データが無効です。',
-                    'details' => $e->errors()
-                ]
-            ], 422);
+            return $this->errorResponse('VALIDATION_ERROR', '入力データが無効です。', 422, $e);
         } catch (\Exception $e) {
             Log::error('予期せぬエラーが発生しました: ' . $e->getMessage(), [
                 'exception' => $e,
                 'trace' => $e->getTraceAsString()
             ]);
-            return response()->json([
-                'error' => [
-                    'code' => 'SERVER_ERROR',
-                    'message' => '予期せぬエラーが発生しました。',
-                    'details' => config('app.debug') ? $e->getMessage() : null
-                ]
-            ], 500);
+            return $this->errorResponse('SERVER_ERROR', '予期せぬエラーが発生しました。', 500, $e);
         }
     }
 
@@ -234,6 +224,17 @@ class CustomerController extends Controller
                 ]
             ], 500);
         }
+    }
+
+    private function errorResponse($code, $message, $status, $exception)
+    {
+        return response()->json([
+            'error' => [
+                'code' => $code,
+                'message' => $message,
+                'details' => config('app.debug') ? $exception->getMessage() : null
+            ]
+        ], $status);
     }
 
     private function calculateChangeRate($currentCount, $previousCount)
