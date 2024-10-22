@@ -12,7 +12,7 @@ class CustomerSeeder extends Seeder
 {
     public function run(): void
     {
-        $count = 55;
+        $count = 50;
         $chunkSize = 10;
 
         $totalCount = 0;
