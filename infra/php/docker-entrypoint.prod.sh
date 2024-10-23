@@ -27,12 +27,14 @@ php artisan view:cache || { echo "View cache failed"; exit 1; }
 echo "Optimizing application"
 php artisan optimize || { echo "Optimization failed"; exit 1; }
 
-# WebSocketサーバーの起動
+# Start PHP-FPM
+php-fpm -D
+
+# WebSocketサーバーの起動（foregroundで実行）
 if [ "$RUN_WEBSOCKETS" = "true" ]; then
-  echo "Starting WebSocket server on port 6001"
-  php artisan websockets:serve &
+    echo "Starting WebSocket server on port 6001"
+    php artisan websockets:serve --host=0.0.0.0 &
 fi
 
-echo "Entrypoint script completed successfully"
-
-exec "$@"
+echo "Starting Nginx"
+exec nginx -g 'daemon off;'
