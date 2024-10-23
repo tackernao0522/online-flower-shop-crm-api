@@ -10,10 +10,10 @@ if [ -z "$APP_KEY" ]; then
 fi
 
 echo "Running database migrations"
-php artisan migrate --force
+php artisan migrate:fresh --force || { echo "Database migration failed"; exit 1; }
 
 echo "Running database seeder"
-php artisan db:seed --force
+php artisan db:seed --force || { echo "Database seeding failed"; exit 1; }
 
 echo "Caching configuration"
 php artisan config:cache || { echo "Config cache failed"; exit 1; }
@@ -28,9 +28,9 @@ echo "Optimizing application"
 php artisan optimize || { echo "Optimization failed"; exit 1; }
 
 # Start PHP-FPM
-php-fpm -D
+php-fpm --nodaemonize &
 
-# WebSocketサーバーの起動（foregroundで実行）
+# WebSocketサーバーの起動（backgroundで実行）
 if [ "$RUN_WEBSOCKETS" = "true" ]; then
     echo "Starting WebSocket server on port 6001"
     php artisan websockets:serve --host=0.0.0.0 &
