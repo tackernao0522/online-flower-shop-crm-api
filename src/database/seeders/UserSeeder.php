@@ -21,8 +21,8 @@ class UserSeeder extends Seeder
         $this->createUserIfNotExists('staff', 'staff@example.com', 'STAFF');
 
         // ランダムユーザーの生成
-        $count = 50; // 合計500人
-        $chunkSize = 10; // 100人ずつ挿入
+        $count = 50;
+        $chunkSize = 10;
         $totalCount = 0;
 
         // トランザクションを使用してバルクインサート

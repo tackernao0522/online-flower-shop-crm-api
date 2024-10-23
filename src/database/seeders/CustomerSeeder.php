@@ -20,7 +20,16 @@ class CustomerSeeder extends Seeder
 
         for ($i = 0; $i < $count; $i += $chunkSize) {
             $previousTotalCount = $totalCount;
-            Customer::factory()->count(min($chunkSize, $count - $i))->create();
+            $customers = Customer::factory()->count(min($chunkSize, $count - $i))->make();
+
+            // 既存の顧客データがない場合のみ挿入
+            foreach ($customers as $customer) {
+                $exists = Customer::where('email', $customer->email)->exists();
+                if (!$exists) {
+                    $customer->save();
+                }
+            }
+
             $totalCount = Customer::count();
             $this->command->info("Created " . min($i + $chunkSize, $count) . " customers");
 
