@@ -14,7 +14,7 @@ class CustomerSeeder extends Seeder
     public function run(): void
     {
         // イベントを無効化（コメントを外す）
-        Event::fake();
+        // Event::fake();
 
         $count = 3;
         $chunkSize = 10;
