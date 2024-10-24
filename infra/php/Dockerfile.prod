@@ -24,8 +24,7 @@ ENV AWS_REGION=${AWS_REGION}
 RUN apt-get update && \
     apt-get install -y curl && \
     curl "https://s3.${AWS_REGION}.amazonaws.com/amazon-ssm-${AWS_REGION}/latest/debian_amd64/amazon-ssm-agent.deb" -o "amazon-ssm-agent.deb" && \
-    dpkg -i amazon-ssm-agent.deb && \
-    amazon-ssm-agent start
+    dpkg -i amazon-ssm-agent.deb
 
 # PHP設定ファイルをコピー
 COPY ./infra/php/php.prod.ini /usr/local/etc/php/php.ini
@@ -45,7 +44,7 @@ WORKDIR /var/www
 COPY ./src /var/www
 
 # Composerの依存関係をインストール
-RUN composer install --optimize-autoloader
+RUN composer install --optimize-autoloader --no-dev
 
 # 権限設定
 RUN chown -R www-data:www-data /var/www
@@ -57,4 +56,4 @@ EXPOSE 80
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 
 # サービスの起動
-CMD ["sh", "-c", "php-fpm -D && nginx -g 'daemon off;'"]
+CMD ["sh", "-c", "php-fpm -D && amazon-ssm-agent && nginx -g 'daemon off;'"]
