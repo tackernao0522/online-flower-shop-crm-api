@@ -3,15 +3,19 @@
 namespace Database\Seeders;
 
 use App\Models\Customer;
+use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Cache;
 use App\Events\CustomerCountUpdated;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Event;
 
 class CustomerSeeder extends Seeder
 {
     public function run(): void
     {
+        // イベントを一時的に無効化
+        // Event::fake();
+
         $count = 3;
         $chunkSize = 10;
 
@@ -35,18 +39,8 @@ class CustomerSeeder extends Seeder
 
             $changeRate = $this->calculateChangeRate($totalCount, $previousTotalCount);
 
-            // イベントを発火する際にエラーを無視する
-            try {
-                event(new CustomerCountUpdated($totalCount, $previousTotalCount, $changeRate));
-            } catch (\Exception $e) {
-                // Pusher関連のエラーが発生した場合はログに記録して無視する
-                Log::error('Failed to dispatch CustomerCountUpdated event: ' . $e->getMessage(), [
-                    'exception' => $e,
-                    'totalCount' => $totalCount,
-                    'previousTotalCount' => $previousTotalCount,
-                    'changeRate' => $changeRate,
-                ]);
-            }
+            // イベントは発火されませんが、コードは維持
+            event(new CustomerCountUpdated($totalCount, $previousTotalCount, $changeRate));
         }
 
         // 最終的な総数と変化率をキャッシュに保存
