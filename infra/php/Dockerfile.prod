@@ -44,7 +44,7 @@ WORKDIR /var/www
 COPY ./src /var/www
 
 # Composerの依存関係をインストール
-RUN composer install --optimize-autoloader --no-dev
+RUN composer install --optimize-autoloader
 
 # 権限設定
 RUN chown -R www-data:www-data /var/www
