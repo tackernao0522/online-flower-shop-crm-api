@@ -7,11 +7,15 @@ use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Cache;
 use App\Events\CustomerCountUpdated;
+use Illuminate\Support\Facades\Event;
 
 class CustomerSeeder extends Seeder
 {
     public function run(): void
     {
+        // イベントを一時的に無効化
+        Event::fake();
+
         $count = 3;
         $chunkSize = 10;
 
@@ -35,12 +39,13 @@ class CustomerSeeder extends Seeder
 
             $changeRate = $this->calculateChangeRate($totalCount, $previousTotalCount);
 
+            // イベントは発火されませんが、コードは維持
             event(new CustomerCountUpdated($totalCount, $previousTotalCount, $changeRate));
         }
 
         // 最終的な総数と変化率をキャッシュに保存
         Cache::put('previous_total_count', $totalCount, now()->addDay());
-        Cache::put('change_rate', 25, now()->addDay());  // 初期値を25%に設定
+        Cache::put('change_rate', 25, now()->addDay());
 
         $this->command->info("Total customers after seeding: " . $totalCount);
         $this->command->info("Initial change rate set to 25%");
