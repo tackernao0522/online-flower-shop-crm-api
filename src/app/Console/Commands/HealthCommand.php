@@ -11,13 +11,30 @@ class HealthCommand extends Command
 
     public function handle()
     {
-        // WebSocketサーバーが有効化されているか確認
-        if (config('websockets.enabled')) {
-            $this->info('WebSocket server is enabled');
-            return 0;  // 成功を示す
+        // キャッシュをクリア
+        $this->call('cache:clear');
+        $this->call('config:clear');
+        $this->call('route:clear');
+
+        // WebSocket設定の確認
+        $websocketsEnabled = config('websockets.enabled', false);
+        $websocketsPort = config('websockets.port', 6001);
+
+        if ($websocketsEnabled) {
+            try {
+                // ローカルWebSocketサーバーへの接続を確認
+                $connection = @fsockopen('127.0.0.1', $websocketsPort);
+                if ($connection) {
+                    fclose($connection);
+                    $this->info('WebSocket server is running');
+                    return 0;
+                }
+            } catch (\Exception $e) {
+                $this->error('WebSocket server connection failed: ' . $e->getMessage());
+            }
         }
 
-        $this->error('WebSocket server is not enabled');
-        return 1;  // 失敗を示す
+        $this->error('WebSocket server is not available');
+        return 1;
     }
 }
