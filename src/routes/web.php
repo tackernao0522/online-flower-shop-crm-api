@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -24,8 +25,21 @@ Route::get('/health', function () {
 
 // WebSocketサーバー用のヘルスチェック
 Route::get('/ws-health', function () {
-    if (app()->bound('websockets') && app('websockets')->enabled()) {
-        return response('OK', 200);
+    $websocketsEnabled = config('websockets.enabled', false);
+    $websocketsPort = config('websockets.port', 6001);
+
+    if ($websocketsEnabled) {
+        try {
+            // ローカルWebSocketサーバーへの接続を確認
+            $connection = @fsockopen('127.0.0.1', $websocketsPort);
+            if ($connection) {
+                fclose($connection);
+                return response('OK', 200);
+            }
+        } catch (\Exception $e) {
+            Log::error('WebSocket health check failed: ' . $e->getMessage());
+        }
     }
+
     return response('WebSocket Server Not Available', 503);
 });
