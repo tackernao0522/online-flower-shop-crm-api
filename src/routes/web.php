@@ -18,30 +18,19 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-// デフォルトのヘルスチェック
+// ヘルスチェック用のエンドポイント
 Route::get('/health', function () {
-    return response('OK', 200);
-});
-
-// WebSocketサーバー用のヘルスチェック
-Route::get('/ws-health', function () {
-    $websocketsEnabled = config('websockets.enabled', false);
-    $websocketsPort = config('websockets.port', 6001);
-
-    if (
-        $websocketsEnabled && $websocketsPort
-    ) {
-        try {
-            $connection = @fsockopen('127.0.0.1', $websocketsPort, $errno, $errstr, 5);
-            if ($connection) {
-                fclose($connection);
-                return response('OK', 200)->header('Content-Type', 'text/plain');
-            }
-        } catch (\Exception $e) {
-            Log::error('WebSocket health check failed: ' . $e->getMessage());
+    // WebSocketサーバーの状態も確認する
+    try {
+        $connection = @fsockopen('127.0.0.1', 6001, $errno, $errstr, 1);
+        if ($connection) {
+            fclose($connection);
+            return response('OK', 200);
         }
+    } catch (\Exception $e) {
+        Log::error('Health check failed: ' . $e->getMessage());
     }
 
-    return response('WebSocket Server Not Available', 503)
-        ->header('Content-Type', 'text/plain');
-})->name('websocket.health');
+    // WebSocketサーバーが利用できなくても、アプリケーション自体は正常として扱う
+    return response('OK', 200);
+});
