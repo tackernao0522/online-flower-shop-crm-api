@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 
 class HealthCommand extends Command
 {
@@ -11,30 +12,26 @@ class HealthCommand extends Command
 
     public function handle()
     {
-        // キャッシュをクリア
-        $this->call('cache:clear');
-        $this->call('config:clear');
-        $this->call('route:clear');
+        try {
+            // データベース接続チェック
+            DB::connection()->getPdo();
 
-        // WebSocket設定の確認
-        $websocketsEnabled = config('websockets.enabled', false);
-        $websocketsPort = config('websockets.port', 6001);
-
-        if ($websocketsEnabled) {
-            try {
-                // ローカルWebSocketサーバーへの接続を確認
-                $connection = @fsockopen('127.0.0.1', $websocketsPort);
-                if ($connection) {
+            // WebSocketサーバーチェック
+            if (config('websockets.enabled', false)) {
+                $connection = @fsockopen('127.0.0.1', 6001, $errno, $errstr, 1);
+                if (!$connection) {
+                    // WebSocketエラーはワーニングとして扱う
+                    $this->warn('WebSocket server is not available');
+                } else {
                     fclose($connection);
-                    $this->info('WebSocket server is running');
-                    return 0;
+                    $this->info('All systems are operational');
                 }
-            } catch (\Exception $e) {
-                $this->error('WebSocket server connection failed: ' . $e->getMessage());
             }
-        }
 
-        $this->error('WebSocket server is not available');
-        return 1;
+            return 0; // 成功
+        } catch (\Exception $e) {
+            $this->error('Health check failed: ' . $e->getMessage());
+            return 1; // 失敗
+        }
     }
 }

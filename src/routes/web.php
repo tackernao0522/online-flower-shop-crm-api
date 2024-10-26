@@ -1,7 +1,7 @@
 <?php
 
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\HealthController;
 
 /*
 |--------------------------------------------------------------------------
@@ -19,18 +19,6 @@ Route::get('/', function () {
 });
 
 // ヘルスチェック用のエンドポイント
-Route::get('/health', function () {
-    // WebSocketサーバーの状態も確認する
-    try {
-        $connection = @fsockopen('127.0.0.1', 6001, $errno, $errstr, 1);
-        if ($connection) {
-            fclose($connection);
-            return response('OK', 200);
-        }
-    } catch (\Exception $e) {
-        Log::error('Health check failed: ' . $e->getMessage());
-    }
-
-    // WebSocketサーバーが利用できなくても、アプリケーション自体は正常として扱う
-    return response('OK', 200);
-});
+Route::get('/health', [HealthController::class, 'check'])
+    ->middleware(['throttle:60,1']) // レート制限を追加
+    ->name('health.check');
