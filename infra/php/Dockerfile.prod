@@ -58,8 +58,13 @@ COPY ./src /var/www
 RUN composer install --optimize-autoloader
 
 # ストレージディレクトリの準備
-RUN mkdir -p /var/www/storage/framework/{sessions,views,cache} && \
-    mkdir -p /var/www/storage/logs
+RUN mkdir -p /var/www/storage/framework/{sessions,views,cache,cache/data} && \
+    mkdir -p /var/www/storage/logs && \
+    chown -R www-data:www-data /var/www && \
+    chmod -R 775 /var/www/storage && \
+    chmod -R 775 /var/www/bootstrap/cache && \
+    chown -R www-data:www-data /var/www/storage/framework/cache && \
+    chmod -R 775 /var/www/storage/framework/cache/data
 
 # 権限設定
 RUN chown -R www-data:www-data /var/www && \
