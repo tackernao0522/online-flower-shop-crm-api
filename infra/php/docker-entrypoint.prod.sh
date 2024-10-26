@@ -20,6 +20,14 @@ sed -i "s/pm.max_spare_servers = .*/pm.max_spare_servers = 3/" /usr/local/etc/ph
 
 # Laravel の起動準備
 cd /var/www
+
+# データベースのセットアップ
+echo "Running database migrations"
+php artisan migrate:fresh --force || { echo "Database migration failed"; exit 1; }
+
+echo "Running database seeder"
+php artisan db:seed --force || { echo "Database seeding failed"; exit 1; }
+
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
