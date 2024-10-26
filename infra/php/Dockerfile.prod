@@ -55,10 +55,7 @@ WORKDIR /var/www
 COPY ./src /var/www
 
 # Composerの依存関係をインストール
-RUN composer config --no-plugins allow-plugins.php-http/discovery true \
-    && composer install --optimize-autoloader --no-dev \
-    && composer require --no-dev fakerphp/faker \
-    && composer dump-autoload --optimize
+RUN composer install --optimize-autoloader --no-dev
 
 # ストレージディレクトリの準備
 RUN mkdir -p /var/www/storage/framework/{sessions,views,cache} && \
