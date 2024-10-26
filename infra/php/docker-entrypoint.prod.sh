@@ -3,32 +3,30 @@ set -e
 
 echo "Starting entrypoint script"
 
-# Check if APP_KEY is set
-if [ -z "$APP_KEY" ]; then
-    echo "Error: APP_KEY is not set. Please configure the APP_KEY in your environment."
-    exit 1
-fi
+# 適切な権限設定
+chown -R www-data:www-data /var/www/storage
+chmod -R 775 /var/www/storage
 
-echo "Running database migrations"
-php artisan migrate:fresh --force || { echo "Database migration failed"; exit 1; }
+# キャッシュディレクトリのクリア
+rm -rf /var/www/storage/framework/cache/*
+rm -rf /var/www/storage/framework/views/*
+rm -rf /var/www/storage/framework/sessions/*
 
-echo "Running database seeder"
-php artisan db:seed --force || { echo "Database seeding failed"; exit 1; }
+# PHP-FPM設定の最適化（必要に応じて）
+sed -i "s/pm.max_children = .*/pm.max_children = 5/" /usr/local/etc/php-fpm.d/www.conf
+sed -i "s/pm.start_servers = .*/pm.start_servers = 2/" /usr/local/etc/php-fpm.d/www.conf
+sed -i "s/pm.min_spare_servers = .*/pm.min_spare_servers = 1/" /usr/local/etc/php-fpm.d/www.conf
+sed -i "s/pm.max_spare_servers = .*/pm.max_spare_servers = 3/" /usr/local/etc/php-fpm.d/www.conf
 
-echo "Caching configuration"
-php artisan config:cache || { echo "Config cache failed"; exit 1; }
+# Laravel の起動準備
+cd /var/www
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+php artisan optimize
 
-echo "Caching routes"
-php artisan route:cache || { echo "Route cache failed"; exit 1; }
-
-echo "Caching views"
-php artisan view:cache || { echo "View cache failed"; exit 1; }
-
-echo "Optimizing application"
-php artisan optimize || { echo "Optimization failed"; exit 1; }
-
-# Start PHP-FPM
-php-fpm --nodaemonize &
+# PHP-FPMの起動
+php-fpm -D
 
 # WebSocketサーバーの起動（backgroundで実行）
 if [ "$RUN_WEBSOCKETS" = "true" ]; then
@@ -36,5 +34,5 @@ if [ "$RUN_WEBSOCKETS" = "true" ]; then
     php artisan websockets:serve --host=0.0.0.0 &
 fi
 
-echo "Starting Nginx"
-exec nginx -g 'daemon off;'
+# Nginxの起動
+nginx -g 'daemon off;'

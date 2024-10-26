@@ -11,7 +11,12 @@ COPY --from=composer:2.2 /usr/bin/composer /usr/bin/composer
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     nginx \
-    git unzip libzip-dev libicu-dev libonig-dev && \
+    git \
+    unzip \
+    libzip-dev \
+    libicu-dev \
+    libonig-dev \
+    curl && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
     docker-php-ext-install intl pdo_mysql zip bcmath
@@ -21,10 +26,16 @@ ARG AWS_REGION
 ENV AWS_REGION=${AWS_REGION}
 
 # SSM エージェントのインストール
-RUN apt-get update && \
-    apt-get install -y curl && \
-    curl "https://s3.${AWS_REGION}.amazonaws.com/amazon-ssm-${AWS_REGION}/latest/debian_amd64/amazon-ssm-agent.deb" -o "amazon-ssm-agent.deb" && \
-    dpkg -i amazon-ssm-agent.deb
+RUN curl "https://s3.${AWS_REGION}.amazonaws.com/amazon-ssm-${AWS_REGION}/latest/debian_amd64/amazon-ssm-agent.deb" -o "amazon-ssm-agent.deb" && \
+    dpkg -i amazon-ssm-agent.deb && \
+    rm amazon-ssm-agent.deb
+
+# PHP設定の追加
+RUN echo "max_execution_time = 30" >> /usr/local/etc/php/conf.d/docker-php-ext-custom.ini && \
+    echo "memory_limit = 128M" >> /usr/local/etc/php/conf.d/docker-php-ext-custom.ini && \
+    echo "max_input_time = 60" >> /usr/local/etc/php/conf.d/docker-php-ext-custom.ini && \
+    echo "post_max_size = 20M" >> /usr/local/etc/php/conf.d/docker-php-ext-custom.ini && \
+    echo "upload_max_filesize = 20M" >> /usr/local/etc/php/conf.d/docker-php-ext-custom.ini
 
 # PHP設定ファイルをコピー
 COPY ./infra/php/php.prod.ini /usr/local/etc/php/php.ini
@@ -44,13 +55,25 @@ WORKDIR /var/www
 COPY ./src /var/www
 
 # Composerの依存関係をインストール
-RUN composer install --optimize-autoloader
+RUN composer install --optimize-autoloader --no-dev
+
+# ストレージディレクトリの準備
+RUN mkdir -p /var/www/storage/framework/{sessions,views,cache} && \
+    mkdir -p /var/www/storage/logs
 
 # 権限設定
-RUN chown -R www-data:www-data /var/www
+RUN chown -R www-data:www-data /var/www && \
+    chmod -R 775 /var/www/storage && \
+    chmod -R 775 /var/www/bootstrap/cache
 
-# ポート80を公開
+# ポートの公開
 EXPOSE 80
+EXPOSE 6001
+
+# ヘルスチェック用のツール追加
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends procps && \
+    rm -rf /var/lib/apt/lists/*
 
 # エントリポイントスクリプトを実行
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
