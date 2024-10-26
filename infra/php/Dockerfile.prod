@@ -55,7 +55,7 @@ WORKDIR /var/www
 COPY ./src /var/www
 
 # Composerの依存関係をインストール
-RUN composer install --optimize-autoloader
+RUN composer install --optimize-autoloader --no-dev
 
 # ストレージディレクトリの準備
 RUN mkdir -p /var/www/storage/framework/{sessions,views,cache} && \
