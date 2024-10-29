@@ -1,4 +1,4 @@
-FROM php:8.1-fpm-buster
+FROM --platform=linux/amd64 php:8.1-fpm-buster
 
 # Composer設定
 ENV COMPOSER_ALLOW_SUPERUSER=1 \
