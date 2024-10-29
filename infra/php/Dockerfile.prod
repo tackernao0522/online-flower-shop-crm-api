@@ -26,7 +26,8 @@ ARG AWS_REGION
 ENV AWS_REGION=${AWS_REGION}
 
 # SSM エージェントのインストール
-RUN curl "https://s3.${AWS_REGION}.amazonaws.com/amazon-ssm-${AWS_REGION}/latest/debian_amd64/amazon-ssm-agent.deb" -o "amazon-ssm-agent.deb" && \
+RUN ARCH=$(dpkg --print-architecture) && \
+    curl -o amazon-ssm-agent.deb "https://s3.${AWS_REGION}.amazonaws.com/amazon-ssm-${AWS_REGION}/latest/debian_${ARCH}/amazon-ssm-agent.deb" && \
     dpkg -i amazon-ssm-agent.deb && \
     rm amazon-ssm-agent.deb
 
