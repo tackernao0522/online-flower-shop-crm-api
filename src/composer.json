@@ -21,7 +21,8 @@
         "psr/http-message": "^1.0|^2.0",
         "pusher/pusher-php-server": "^7.2",
         "ramsey/uuid": "^4.7",
-        "react/promise": "^2.3"
+        "react/promise": "^2.3",
+        "aws/aws-sdk-php": "^3.0"
     },
     "require-dev": {
         "barryvdh/laravel-ide-helper": "^3.1",
