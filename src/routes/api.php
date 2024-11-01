@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\CustomerController;
+use App\Http\Controllers\Api\V1\ProductController;
 use App\Http\Controllers\Api\V1\UserController;
 
 Route::prefix('v1')->group(function () {
@@ -27,5 +28,10 @@ Route::prefix('v1')->group(function () {
         Route::get('/user/online-status', [UserController::class, 'getCurrentUserOnlineStatus']);
         Route::post('/user/online-status', [UserController::class, 'updateOnlineStatus']);
         Route::get('/users/{user}/online-status', [UserController::class, 'getOnlineStatus']);
+
+        // 商品関連のルート(参照のみ)
+        Route::get('products', [ProductController::class, 'index']);
+        Route::get('products/{product}', [ProductController::class, 'show']);
+        Route::get('products/{product}/stock', [ProductController::class, 'checkStock']);
     });
 });
