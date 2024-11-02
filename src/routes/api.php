@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\CampaignController;
 use App\Http\Controllers\Api\V1\CustomerController;
 use App\Http\Controllers\Api\V1\OrderController;
 use App\Http\Controllers\Api\V1\ProductController;
@@ -42,5 +43,9 @@ Route::prefix('v1')->group(function () {
         Route::put('orders/{order}/items', [OrderController::class, 'updateOrderItems']);
         Route::put('orders/{order}/status', [OrderController::class, 'updateStatus']);
         Route::delete('orders/{order}', [OrderController::class, 'destroy']);
+
+        // キャンペーン管理画面のルート
+        Route::apiResource('campaigns', CampaignController::class);
+        Route::put('campaigns/{campaign}/toggle-status', [CampaignController::class, 'toggleStatus']);
     });
 });
