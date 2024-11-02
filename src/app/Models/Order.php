@@ -35,7 +35,7 @@ class Order extends Model
     const STATUS_PROCESSING = 'PROCESSING';
     const STATUS_CONFIRMED = 'CONFIRMED';
     const STATUS_SHIPPED = 'SHIPPED';
-    const STATUS_DELIVERD = 'DELIVERED';
+    const STATUS_DELIVERED = 'DELIVERED';
     const STATUS_CANCELLED = 'CANCELLED';
 
     /**
@@ -48,7 +48,7 @@ class Order extends Model
             self::STATUS_PROCESSING,
             self::STATUS_CONFIRMED,
             self::STATUS_SHIPPED,
-            self::STATUS_DELIVERD,
+            self::STATUS_DELIVERED,
             self::STATUS_CANCELLED,
         ];
     }
