@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\CustomerController;
+use App\Http\Controllers\Api\V1\OrderController;
 use App\Http\Controllers\Api\V1\ProductController;
 use App\Http\Controllers\Api\V1\UserController;
 
@@ -33,5 +34,13 @@ Route::prefix('v1')->group(function () {
         Route::get('products', [ProductController::class, 'index']);
         Route::get('products/{product}', [ProductController::class, 'show']);
         Route::get('products/{product}/stock', [ProductController::class, 'checkStock']);
+
+        // 注文管理関連のルート
+        Route::get('orders', [OrderController::class, 'index']);
+        Route::post('orders', [OrderController::class, 'store']);
+        Route::get('orders/{order}', [OrderController::class, 'show']);
+        Route::put('orders/{order}/items', [OrderController::class, 'updateOrderItems']);
+        Route::put('orders/{order}/status', [OrderController::class, 'updateStatus']);
+        Route::delete('orders/{order}', [OrderController::class, 'destroy']);
     });
 });
