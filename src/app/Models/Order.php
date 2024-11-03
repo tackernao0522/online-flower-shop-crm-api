@@ -105,4 +105,43 @@ class Order extends Model
             self::STATUS_PROCESSING,
         ]);
     }
+
+    /**
+     * 日付範囲内でによる絞り込み
+     */
+    public function scopeDateRange($query, $startDate = null, $endDate = null)
+    {
+        if ($startDate) {
+            $query->where('orderDate', '>=', $startDate);
+        }
+        if ($endDate) {
+            $query->where('orderDate', '>=', $endDate);
+        }
+        return $query;
+    }
+
+    /**
+     * 金額範囲による絞り込み
+     */
+    public function scopeAmountRange($query, $minAmount = null, $maxAmount = null)
+    {
+        if ($minAmount) {
+            $query->where('totalAmount', '>=', $minAmount);
+        }
+        if ($maxAmount) {
+            $query->where('totalAmount', '<=', $maxAmount);
+        }
+        return $query;
+    }
+
+    /**
+     * ステータスによる絞り込み
+     */
+    public function scopeWithStatus($query, $status = null)
+    {
+        if ($status) {
+            $query->where('status', $status);
+        }
+        return $query;
+    }
 }
