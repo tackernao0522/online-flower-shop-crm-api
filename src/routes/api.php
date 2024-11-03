@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\V1\CampaignController;
 use App\Http\Controllers\Api\V1\CustomerController;
 use App\Http\Controllers\Api\V1\OrderController;
 use App\Http\Controllers\Api\V1\ProductController;
+use App\Http\Controllers\Api\V1\ShipmentController;
 use App\Http\Controllers\Api\V1\UserController;
 
 Route::prefix('v1')->group(function () {
@@ -47,5 +48,8 @@ Route::prefix('v1')->group(function () {
         // キャンペーン管理画面のルート
         Route::apiResource('campaigns', CampaignController::class);
         Route::put('campaigns/{campaign}/toggle-status', [CampaignController::class, 'toggleStatus']);
+
+        // 配送管理画面のルーツ
+        Route::apiResource('shipments', ShipmentController::class);
     });
 });
