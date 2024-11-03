@@ -3,9 +3,9 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\StoreOrderRequest;
-use App\Http\Requests\UpdateOrderItemsRequest;
-use App\Http\Requests\UpdateOrderStatusRequest;
+use App\Http\Requests\Api\V1\StoreOrderRequest;
+use App\Http\Requests\Api\V1\UpdateOrderItemsRequest;
+use App\Http\Requests\Api\V1\UpdateOrderStatusRequest;
 use App\Models\Order;
 use App\Services\OrderService;
 use Illuminate\Http\Request;
