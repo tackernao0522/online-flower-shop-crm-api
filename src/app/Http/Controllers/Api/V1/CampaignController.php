@@ -10,6 +10,7 @@ use App\Services\CampaignService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 
 class CampaignController extends Controller
@@ -26,12 +27,26 @@ class CampaignController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
+        // リクエストパラメータを明示的に取得
+        $isActive = $request->has('is_active') ? $request->boolean('is_active') : null;
+
+        Log::info('Campaign index params:', [
+            'params' => $request->all(),
+            'is_active' => $isActive
+        ]);
+
         $query = Campaign::query()
             ->dateRange($request->start_date, $request->end_date)
             ->nameLike($request->name)
             ->discountCode($request->discount_code)
             ->discountRateRange($request->min_discount_rate, $request->max_discount_rate)
-            ->active($request->boolean('is_active'));
+            ->active($isActive);  // null を渡すことでフィルタリングを回避
+
+        Log::info('Campaign query initial:', [
+            'sql' => $query->toSql(),
+            'bindings' => $query->getBindings(),
+            'count' => $query->count()
+        ]);
 
         if ($request->boolean('current_only')) {
             $query->currentlyValid();
@@ -46,6 +61,11 @@ class CampaignController extends Controller
         }
 
         $campaigns = $query->paginate($request->input('per_page', 15));
+
+        Log::info('Campaign index result:', [
+            'total_count' => $campaigns->total(),
+            'filtered_count' => $campaigns->count()
+        ]);
 
         return response()->json($campaigns, Response::HTTP_OK);
     }
