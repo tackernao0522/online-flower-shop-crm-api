@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Log;
 
 class Campaign extends Model
 {
@@ -115,6 +116,14 @@ class Campaign extends Model
     public function scopeCurrentlyValid($query)
     {
         $today = now()->startOfDay();
+        Log::info('Executing currentlyValid scope:', [
+            'today' => $today->toDateString(),
+            'conditions' => [
+                'startDate_lte' => $today->toDateString(),
+                'endDate_gte' => $today->toDateString(),
+                'is_active' => true
+            ]
+        ]);
         return $query->where('startDate', '<=', $today)
             ->where('endDate', '>=', $today)
             ->where('is_active', true);
