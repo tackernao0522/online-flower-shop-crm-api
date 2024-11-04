@@ -25,4 +25,31 @@ class Product extends Model
         'stockQuantity' => 'integer',
         'is_active' => 'boolean',
     ];
+
+    /**
+     * カテゴリーによる絞り込み
+     */
+    public function scopeWithCategory($query, $category = null)
+    {
+        if ($category) {
+            $query->where('category', $category);
+        }
+        return $query;
+    }
+
+    /**
+     * アクティブな商品のみ取得
+     */
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
+    }
+
+    /**
+     * 在庫がある商品のみ取得
+     */
+    public function scopeInStock($query)
+    {
+        return $query->where('stockQuantity', '>', 0);
+    }
 }
