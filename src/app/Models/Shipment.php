@@ -56,4 +56,67 @@ class Shipment extends Model
     {
         return $this->belongsTo(Order::class, 'orderId');
     }
+
+    /**
+     * 配送日による絞り込み
+     */
+    public function scopeDateRage($query, $startDate = null, $endDate = null)
+    {
+        if ($startDate) {
+            $query->where('shippingDate', '>=', $startDate);
+        }
+        if ($endDate) {
+            $query->where('shippingDate', '<=', $endDate);
+        }
+        return $query;
+    }
+
+    /**
+     * 配送状態による絞り込み
+     */
+    public function scopeWithStatus($query, $status = null)
+    {
+        if ($status) {
+            $query->where('status', $status);
+        }
+        return $query;
+    }
+
+    /**
+     * 追跡番号による検索
+     */
+    public function scopeTrackingNumberLike($query, $trackingNumber = null)
+    {
+        if ($trackingNumber) {
+            $query->where('trackingNumber', 'like', '%' . $trackingNumber . '%');
+        }
+        return $query;
+    }
+
+    /**
+     * 注文番号による検索
+     */
+    public function scopeOrderNumberLike($query, $orderNumber = null)
+    {
+        if ($orderNumber) {
+            $query->whereHas('order', function ($q) use ($orderNumber) {
+                $q->where('orderNumber', 'like', '%' . $orderNumber . '%');
+            });
+        }
+        return $query;
+    }
+
+
+    /**
+     * 顧客名による検索
+     */
+    public function scopeCustomerNameLike($query, $customerName = null)
+    {
+        if ($customerName) {
+            $query->whereHas('order.customer', function ($q) use ($customerName) {
+                $q->where('name', 'like', '%' . $customerName . '%');
+            });
+        }
+        return $query;
+    }
 }
