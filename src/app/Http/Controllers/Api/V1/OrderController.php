@@ -11,6 +11,7 @@ use App\Services\OrderService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 
 class OrderController extends Controller
@@ -27,19 +28,62 @@ class OrderController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = Order::with(['customer', 'orderItems.product', 'user'])
-            ->dateRange($request->start_date, $request->end_date)
-            ->withStatus($request->status)
-            ->orderNumberLike($request->order_number)
-            ->amountRange($request->min_amount, $request->max_amount)
-            ->orderBy(
+        try {
+            Log::info('Building Order query', ['request' => $request->all()]);
+
+            $query = Order::with(['customer', 'orderItems.product', 'user']);
+
+            if ($request->has('start_date') || $request->has('end_date')) {
+                $query->dateRange($request->start_date, $request->end_date);
+            }
+
+            if ($request->has('status')) {
+                $query->withStatus($request->status);
+            }
+
+            if ($request->has('min_amount') || $request->has('max_amount')) {
+                $query->amountRange($request->min_amount, $request->max_amount);
+            }
+
+            $orders = $query->orderBy(
                 $request->input('sort_by', 'orderDate'),
                 $request->input('sort_order', 'desc')
-            );
+            )->paginate($request->input('per_page', 15));
 
-        $orders = $query->paginate($request->input('per_page', 15));
+            // データを変換して、明示的にリレーションを含める
+            $orders->getCollection()->transform(function ($order) {
+                return [
+                    'id' => $order->id,
+                    'orderNumber' => $order->orderNumber,
+                    'orderDate' => $order->orderDate,
+                    'totalAmount' => $order->totalAmount,
+                    'status' => $order->status,
+                    'customer' => $order->customer,
+                    'orderItems' => $order->orderItems->map(function ($item) {
+                        return [
+                            'id' => $item->id,
+                            'quantity' => $item->quantity,
+                            'unitPrice' => $item->unitPrice,
+                            'product' => $item->product
+                        ];
+                    })
+                ];
+            });
 
-        return response()->json($orders, Response::HTTP_OK);
+            return response()->json($orders, Response::HTTP_OK);
+        } catch (\Exception $e) {
+            Log::error('Order index error:', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'error' => [
+                    'code' => 'ORDER_ERROR',
+                    'message' => '注文情報の取得に失敗しました。'
+                ]
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 
     /**
@@ -54,16 +98,33 @@ class OrderController extends Controller
 
             DB::commit();
 
-            return response()->json(
-                $order->load(['orderItems.product', 'customer']),
-                Response::HTTP_CREATED
-            );
+            // レスポンスを明示的に構造化
+            return response()->json([
+                'id' => $order->id,
+                'orderNumber' => $order->orderNumber,
+                'totalAmount' => $order->totalAmount,
+                'status' => $order->status,
+                'orderItems' => $order->orderItems->map(function ($item) {
+                    return [
+                        'quantity' => $item->quantity,
+                        'unitPrice' => $item->unitPrice,
+                        'product' => $item->product
+                    ];
+                }),
+                'customer' => $order->customer
+            ], Response::HTTP_CREATED);
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(
-                ['message' => '注文の作成に失敗しました'],
-                Response::HTTP_INTERNAL_SERVER_ERROR
-            );
+            Log::error('Order creation failed', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json([
+                'error' => [
+                    'code' => 'ORDER_ERROR',
+                    'message' => '注文の作成に失敗しました。'
+                ]
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -72,10 +133,19 @@ class OrderController extends Controller
      */
     public function show(Order $order): JsonResponse
     {
-        return response()->json(
-            $order->load(['customer', 'orderItems.product', 'user', 'campaign']),
-            Response::HTTP_OK
-        );
+        try {
+            return response()->json(
+                $order->load(['customer', 'orderItems.product', 'user', 'campaign']),
+                Response::HTTP_OK
+            );
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => [
+                    'code' => 'ORDER_ERROR',
+                    'message' => '注文情報の取得に失敗しました。'
+                ]
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 
     /**
@@ -90,16 +160,27 @@ class OrderController extends Controller
 
             DB::commit();
 
-            return response()->json(
-                $order->load(['orderItems.product']),
-                Response::HTTP_OK
-            );
+            // レスポンスを明示的に構造化
+            return response()->json([
+                'id' => $order->id,
+                'orderNumber' => $order->orderNumber,
+                'totalAmount' => $order->totalAmount,
+                'orderItems' => $order->orderItems->map(function ($item) {
+                    return [
+                        'quantity' => $item->quantity,
+                        'unitPrice' => $item->unitPrice,
+                        'product' => $item->product
+                    ];
+                })
+            ], Response::HTTP_OK);
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(
-                ['message' => '注文詳細の更新に失敗しました'],
-                Response::HTTP_INTERNAL_SERVER_ERROR
-            );
+            return response()->json([
+                'error' => [
+                    'code' => 'ORDER_ERROR',
+                    'message' => '注文明細の更新に失敗しました。'
+                ]
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -121,15 +202,17 @@ class OrderController extends Controller
             );
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(
-                ['message' => $e->getMessage()],
-                Response::HTTP_BAD_REQUEST
-            );
+            return response()->json([
+                'error' => [
+                    'code' => 'ORDER_ERROR',
+                    'message' => 'ステータスの更新に失敗しました。'
+                ]
+            ], Response::HTTP_BAD_REQUEST);
         }
     }
 
     /**
-     * Remove the specified resource from storage.
+     * 指定された注文を削除
      */
     public function destroy(Order $order): JsonResponse
     {
@@ -146,10 +229,9 @@ class OrderController extends Controller
             return response()->json(null, Response::HTTP_NO_CONTENT);
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(
-                ['message' => $e->getMessage()],
-                Response::HTTP_BAD_REQUEST
-            );
+            return response()->json([
+                'message' => $e->getMessage()
+            ], Response::HTTP_BAD_REQUEST);
         }
     }
 }
