@@ -15,7 +15,7 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->string('orderNumber')->unique();  // 注文番号
             $table->dateTime('orderDate');           // 注文日時
-            $table->unsignedInteger('totalAmount');  // 合計金額（税込）
+            $table->unsignedInteger('totalAmount')->default(0);  // 合計金額（税込）
             $table->enum('status', [
                 'PENDING',      // 注文受付
                 'PROCESSING',   // 処理中

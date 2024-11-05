@@ -21,6 +21,8 @@ class OrderService
             'status' => Order::STATUS_PENDING,
             'campaignId' => $validated['campaignId'] ?? null,
             'orderNumber' => $this->generateOrderNumber(),
+            'totalAmount' => 0,
+            'discountApplied' => 0,
         ]);
         $order->save();
 
@@ -41,7 +43,8 @@ class OrderService
      */
     public function updateOrderItems(Order $order, array $orderItems): Order
     {
-        $order->orderItems()->delete();
+        // 古い注文明細を物理削除
+        $order->orderItems()->forceDelete();
 
         $totalAmount = $this->createOrderItems($order, $orderItems);
         $discountApplied = $this->calculateDiscount($order, $totalAmount);
