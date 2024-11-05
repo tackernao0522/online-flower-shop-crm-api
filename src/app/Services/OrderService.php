@@ -32,7 +32,8 @@ class OrderService
             'discountApplied' => $discountApplied
         ]);
 
-        return $order;
+        // リレーションを再ロードして、fresh()を使用して最新のデータを取得
+        return $order->fresh()->load(['orderItems.product', 'customer']);
     }
 
     /**
@@ -50,7 +51,8 @@ class OrderService
             'discountApplied' => $discountApplied
         ]);
 
-        return $order;
+        // リレーションを再ロードして、fresh()を使用して最新のデータを取得
+        return $order->fresh()->load(['orderItems.product']);
     }
 
     /**

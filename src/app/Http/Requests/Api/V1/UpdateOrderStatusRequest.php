@@ -4,6 +4,7 @@ namespace App\Http\Requests\Api\V1;
 
 use App\Models\Order;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateOrderStatusRequest extends FormRequest
 {
@@ -23,7 +24,7 @@ class UpdateOrderStatusRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'status' => 'required:' . implode(',', Order::getAvailableStatuses()),
+            'status' => ['required', Rule::in(Order::getAvailableStatuses())],
         ];
     }
 
@@ -38,13 +39,22 @@ class UpdateOrderStatusRequest extends FormRequest
     public function withValidator($validator)
     {
         $validator->after(function ($validator) {
-            $order = $this->route('order');
-            if (
-                $this->status === Order::STATUS_CANCELLED &&
-                $order->status === Order::STATUS_DELIVERED
-            ) {
-                $validator->errors()->add('status', '配達完了した注文はキャンセルできません');
+            if ($validator->errors()->isEmpty()) {
+                $order = $this->route('order');
+                if (
+                    $this->status === Order::STATUS_CANCELLED &&
+                    $order->status === Order::STATUS_DELIVERED
+                ) {
+                    $validator->errors()->add('status', '配達完了した注文はキャンセルできません');
+                }
             }
         });
+    }
+
+    protected function failedValidation(\Illuminate\Contracts\Validation\Validator $validator)
+    {
+        throw new \Illuminate\Validation\ValidationException($validator, response()->json([
+            'errors' => $validator->errors()
+        ], 422));
     }
 }

@@ -109,13 +109,14 @@ class Order extends Model
     /**
      * 日付範囲内でによる絞り込み
      */
+    // Order.php
     public function scopeDateRange($query, $startDate = null, $endDate = null)
     {
         if ($startDate) {
-            $query->where('orderDate', '>=', $startDate);
+            $query->whereDate('orderDate', '>=', $startDate);
         }
         if ($endDate) {
-            $query->where('orderDate', '>=', $endDate);
+            $query->whereDate('orderDate', '<=', $endDate);
         }
         return $query;
     }
@@ -141,6 +142,14 @@ class Order extends Model
     {
         if ($status) {
             $query->where('status', $status);
+        }
+        return $query;
+    }
+
+    public function scopeOrderNumberLike($query, $orderNumber)
+    {
+        if ($orderNumber) {
+            return $query->where('orderNumber', 'like', "%{$orderNumber}%");
         }
         return $query;
     }

@@ -55,6 +55,15 @@ class Handler extends ExceptionHandler
             ], 401);
         }
 
+        if ($request->is('api/v1/orders*')) {
+            return response()->json([
+                'error' => [
+                    'code' => 'ORDER_ERROR',
+                    'message' => '注文処理に失敗しました。'
+                ]
+            ], 500);
+        }
+
         if ($exception instanceof \Exception) {
             return response()->json([
                 'error' => [
