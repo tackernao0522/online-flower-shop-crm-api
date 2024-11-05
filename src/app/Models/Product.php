@@ -26,6 +26,20 @@ class Product extends Model
         'is_active' => 'boolean',
     ];
 
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($product) {
+            if ($product->stockQuantity < 0) {
+                throw new \InvalidArgumentException('在庫数は0以上である必要があります。');
+            }
+            if ($product->price < 0) {
+                throw new \InvalidArgumentException('価格は0以上である必要があります。');
+            }
+        });
+    }
+
     /**
      * カテゴリーによる絞り込み
      */
