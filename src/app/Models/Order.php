@@ -90,7 +90,7 @@ class Order extends Model
      */
     public function calculateTotal(): int
     {
-        return $this->orderItems()->sum(function ($item) {
+        return $this->orderItems->sum(function ($item) {
             return $item->quantity * $item->unitPrice;
         });
     }
