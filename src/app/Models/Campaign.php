@@ -55,10 +55,12 @@ class Campaign extends Model
     public function scopeDateRange($query, $startDate = null, $endDate = null)
     {
         if ($startDate) {
-            $query->where('startDate', '>=', $startDate);
+            // 開始日の条件を修正: キャンペーンの終了日が検索開始日以降
+            $query->where('endDate', '>=', $startDate);
         }
         if ($endDate) {
-            $query->where('endDate', '<=', $endDate);
+            // 終了日の条件を修正: キャンペーンの開始日が検索終了日以前
+            $query->where('startDate', '<=', $endDate);
         }
         return $query;
     }
