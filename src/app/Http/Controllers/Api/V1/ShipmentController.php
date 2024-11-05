@@ -28,17 +28,27 @@ class ShipmentController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = Shipment::with(['order.customer'])
-            ->dateRange($request->start_date, $request->end_date)
-            ->withStatus($request->status)
-            ->trackingNumberLike($request->tracking_number)
-            ->orderNumberLike($request->order_number)
-            ->customerNameike($request->customer_name)
+            ->when($request->start_date || $request->end_date, function ($query) use ($request) {
+                return $query->dateRange($request->start_date, $request->end_date);
+            })
+            ->when($request->status, function ($query) use ($request) {
+                return $query->withStatus($request->status);
+            })
+            ->when($request->tracking_number, function ($query) use ($request) {
+                return $query->trackingNumberLike($request->tracking_number);
+            })
+            ->when($request->order_number, function ($query) use ($request) {
+                return $query->orderNumberLike($request->order_number);
+            })
+            ->when($request->customer_name, function ($query) use ($request) {
+                return $query->customerNameLike($request->customer_name);
+            })
             ->orderBy(
                 $request->input('sort_by', 'shippingDate'),
                 $request->input('sort_order', 'desc')
             );
 
-        $shipments = $query->pagenate($request->input('per_page', 15));
+        $shipments = $query->paginate($request->input('per_page', 15));
 
         return response()->json($shipments, Response::HTTP_OK);
     }

@@ -60,7 +60,7 @@ class Shipment extends Model
     /**
      * 配送日による絞り込み
      */
-    public function scopeDateRage($query, $startDate = null, $endDate = null)
+    public function scopeDateRange($query, $startDate = null, $endDate = null)
     {
         if ($startDate) {
             $query->where('shippingDate', '>=', $startDate);
