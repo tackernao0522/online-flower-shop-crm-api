@@ -127,9 +127,17 @@ class OrderControllerTest extends TestCase
                         ]
                     ]
                 ],
-                'total',
-                'per_page',
-                'current_page'
+                'meta' => [
+                    'current_page',
+                    'per_page',
+                    'total',
+                    'last_page'
+                ],
+                'stats' => [
+                    'totalCount',
+                    'previousCount',
+                    'changeRate'
+                ]
             ]);
     }
 
