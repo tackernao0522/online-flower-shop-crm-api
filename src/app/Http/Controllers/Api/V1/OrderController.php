@@ -8,8 +8,10 @@ use App\Http\Requests\Api\V1\UpdateOrderItemsRequest;
 use App\Http\Requests\Api\V1\UpdateOrderStatusRequest;
 use App\Models\Order;
 use App\Services\OrderService;
+use App\Events\OrderCountUpdated;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
@@ -33,6 +35,10 @@ class OrderController extends Controller
 
             $query = Order::with(['customer', 'orderItems.product', 'user']);
 
+            // 現在の注文数を取得してstatsを更新（キャンセル以外）
+            $currentCount = Order::whereNotIn('status', ['CANCELLED'])->count();
+            $currentStats = $this->updateOrderStats($currentCount);
+
             if ($request->has('start_date') || $request->has('end_date')) {
                 $query->dateRange($request->start_date, $request->end_date);
             }
@@ -50,8 +56,7 @@ class OrderController extends Controller
                 $request->input('sort_order', 'desc')
             )->paginate($request->input('per_page', 15));
 
-            // データを変換して、明示的にリレーションを含める
-            $orders->getCollection()->transform(function ($order) {
+            $transformedOrders = $orders->getCollection()->map(function ($order) {
                 return [
                     'id' => $order->id,
                     'orderNumber' => $order->orderNumber,
@@ -70,7 +75,28 @@ class OrderController extends Controller
                 ];
             });
 
-            return response()->json($orders, Response::HTTP_OK);
+            $response = [
+                'data' => $transformedOrders,
+                'meta' => [
+                    'current_page' => $orders->currentPage(),
+                    'per_page' => $orders->perPage(),
+                    'total' => $orders->total(),
+                    'last_page' => $orders->lastPage(),
+                ],
+                'stats' => [
+                    'totalCount' => $currentStats['totalCount'],
+                    'previousCount' => $currentStats['previousCount'],
+                    'changeRate' => $currentStats['changeRate']
+                ]
+            ];
+
+            Log::info('Order stats calculated', $currentStats);
+            Log::info('Order index response prepared', [
+                'totalCount' => $currentStats['totalCount'],
+                'changeRate' => $currentStats['changeRate']
+            ]);
+
+            return response()->json($response, Response::HTTP_OK);
         } catch (\Exception $e) {
             Log::error('Order index error:', [
                 'message' => $e->getMessage(),
@@ -94,16 +120,37 @@ class OrderController extends Controller
         try {
             DB::beginTransaction();
 
-            $order = $this->orderService->createOrder($request->validated());
+            // 作成前の合計を取得
+            $previousTotalCount = Order::whereNotIn('status', ['CANCELLED'])->count();
+
+            // 注文を作成し、orderDate に現在日時を設定
+            $validatedData = $request->validated();
+            $validatedData['orderDate'] = now(); // orderDate を現在の日時に設定
+            $order = $this->orderService->createOrder($validatedData);
+
+            // 作成後の合計を取得
+            $currentTotalCount = Order::whereNotIn('status', ['CANCELLED'])->count();
+
+            // 変化率を計算
+            $changeRate = $previousTotalCount > 0
+                ? round((($currentTotalCount - $previousTotalCount) / $previousTotalCount) * 100, 1)
+                : 0;
+
+            // イベントを発行
+            broadcast(new OrderCountUpdated(
+                $currentTotalCount,
+                $previousTotalCount,
+                $changeRate
+            ));
 
             DB::commit();
 
-            // レスポンスを明示的に構造化
             return response()->json([
                 'id' => $order->id,
                 'orderNumber' => $order->orderNumber,
                 'totalAmount' => $order->totalAmount,
                 'status' => $order->status,
+                'orderDate' => $order->orderDate,
                 'orderItems' => $order->orderItems->map(function ($item) {
                     return [
                         'quantity' => $item->quantity,
@@ -225,6 +272,17 @@ class OrderController extends Controller
 
             $order->delete();
 
+            // 現在の注文数を取得して統計を更新
+            $currentCount = Order::whereNotIn('status', ['CANCELLED'])->count();
+            $stats = $this->updateOrderStats($currentCount);
+
+            // イベントを発行
+            broadcast(new OrderCountUpdated(
+                $stats['totalCount'],
+                $stats['previousCount'],
+                $stats['changeRate']
+            ));
+
             DB::commit();
             return response()->json(null, Response::HTTP_NO_CONTENT);
         } catch (\Exception $e) {
@@ -233,5 +291,38 @@ class OrderController extends Controller
                 'message' => $e->getMessage()
             ], Response::HTTP_BAD_REQUEST);
         }
+    }
+
+    private function updateOrderStats(int $currentCount): array
+    {
+        // 前回の総数を取得。ない場合は現在の数を使用
+        $previousTotalCount = Cache::get('previous_order_count', $currentCount);
+        $changeRate = Cache::get('order_change_rate', 0.0);
+
+        // 現在の値が前回の値と異なる場合のみ更新
+        if ($currentCount !== $previousTotalCount) {
+            $changeRate = $this->calculateChangeRate($currentCount, $previousTotalCount);
+
+            // 現在の値を次回の比較のために保存
+            Cache::put('previous_order_count', $currentCount, now()->addDay());
+            Cache::put('order_change_rate', $changeRate, now()->addDay());
+        }
+
+        return [
+            'totalCount' => $currentCount,
+            'previousCount' => $previousTotalCount,
+            'changeRate' => $changeRate
+        ];
+    }
+
+    /**
+     * 変動率を計算
+     */
+    private function calculateChangeRate($currentCount, $previousCount): float
+    {
+        if ($previousCount == 0) {
+            return $currentCount > 0 ? 100 : 0;
+        }
+        return round((($currentCount - $previousCount) / $previousCount) * 100, 1);
     }
 }
