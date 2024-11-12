@@ -234,12 +234,36 @@ class OrderController extends Controller
     /**
      * 注文ステータスを更新
      */
+    /**
+     * 注文ステータスを更新
+     */
     public function updateStatus(UpdateOrderStatusRequest $request, Order $order): JsonResponse
     {
         try {
             DB::beginTransaction();
 
+            // 変更前のステータスを保持
+            $oldStatus = $order->status;
+
+            // ステータスを更新
             $order->update(['status' => $request->status]);
+
+            // キャンセルされた場合またはキャンセルから他のステータスに変更された場合は統計を更新
+            if (($request->status === Order::STATUS_CANCELLED && $oldStatus !== Order::STATUS_CANCELLED) ||
+                ($oldStatus === Order::STATUS_CANCELLED && $request->status !== Order::STATUS_CANCELLED)
+            ) {
+
+                // 現在の注文数を取得して統計を更新（キャンセル以外）
+                $currentCount = Order::whereNotIn('status', ['CANCELLED'])->count();
+                $stats = $this->updateOrderStats($currentCount);
+
+                // イベントを発行
+                broadcast(new OrderCountUpdated(
+                    $stats['totalCount'],
+                    $stats['previousCount'],
+                    $stats['changeRate']
+                ));
+            }
 
             DB::commit();
 

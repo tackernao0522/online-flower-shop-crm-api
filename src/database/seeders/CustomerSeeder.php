@@ -16,8 +16,8 @@ class CustomerSeeder extends Seeder
         // イベントを無効化（コメントを外す）
         // Event::fake();
 
-        $count = 1000;
-        $chunkSize = 100;
+        $count = 6;
+        $chunkSize = 10;
 
         $totalCount = 0;
         $previousTotalCount = 0;
