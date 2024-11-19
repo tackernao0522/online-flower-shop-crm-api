@@ -40,7 +40,6 @@ class CustomerSeeder extends Seeder
 
                 $changeRate = $this->calculateChangeRate($totalCount, $previousTotalCount);
 
-                // イベントは発火されませんが、コードは維持
                 event(new CustomerCountUpdated($totalCount, $previousTotalCount, $changeRate));
             }
 

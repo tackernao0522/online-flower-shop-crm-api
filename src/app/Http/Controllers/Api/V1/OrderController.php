@@ -8,10 +8,12 @@ use App\Http\Requests\Api\V1\UpdateOrderItemsRequest;
 use App\Http\Requests\Api\V1\UpdateOrderStatusRequest;
 use App\Models\Order;
 use App\Services\OrderService;
+use App\Services\StatsService;
 use App\Events\OrderCountUpdated;
+use App\Events\SalesUpdated;
+use App\Models\StatsLog;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
@@ -19,11 +21,16 @@ use Symfony\Component\HttpFoundation\Response;
 class OrderController extends Controller
 {
     private $orderService;
+    private $statsService;
 
-    public function __construct(OrderService $orderService)
-    {
+    public function __construct(
+        OrderService $orderService,
+        StatsService $statsService
+    ) {
         $this->orderService = $orderService;
+        $this->statsService = $statsService;
     }
+
 
     /**
      * 注文一覧を取得
@@ -35,10 +42,7 @@ class OrderController extends Controller
 
             $query = Order::with(['customer', 'orderItems.product', 'user']);
 
-            // 現在の注文数を取得してstatsを更新（キャンセル以外）
-            $currentCount = Order::whereNotIn('status', ['CANCELLED'])->count();
-            $currentStats = $this->updateOrderStats($currentCount);
-
+            // フィルタリング処理
             if ($request->has('start_date') || $request->has('end_date')) {
                 $query->dateRange($request->start_date, $request->end_date);
             }
@@ -56,47 +60,67 @@ class OrderController extends Controller
                 $request->input('sort_order', 'desc')
             )->paginate($request->input('per_page', 15));
 
-            $transformedOrders = $orders->getCollection()->map(function ($order) {
-                return [
-                    'id' => $order->id,
-                    'orderNumber' => $order->orderNumber,
-                    'orderDate' => $order->orderDate,
-                    'totalAmount' => $order->totalAmount,
-                    'status' => $order->status,
-                    'customer' => $order->customer,
-                    'orderItems' => $order->orderItems->map(function ($item) {
-                        return [
-                            'id' => $item->id,
-                            'quantity' => $item->quantity,
-                            'unitPrice' => $item->unitPrice,
-                            'product' => $item->product
-                        ];
-                    })
-                ];
-            });
+            // アクティブな注文のみを取得して統計を計算
+            $activeOrders = Order::whereNotIn('status', [Order::STATUS_CANCELLED])
+                ->whereNull('deleted_at')
+                ->with('orderItems')
+                ->get();
 
-            $response = [
-                'data' => $transformedOrders,
+            // 現在の統計を計算
+            $currentCount = $activeOrders->sum(function ($order) {
+                return $order->orderItems->sum('quantity');
+            });
+            $currentSales = $activeOrders->sum('totalAmount');
+
+            // 最新の統計ログを取得
+            $orderStats = StatsLog::where('metric_type', 'order_count')
+                ->latest('recorded_at')
+                ->first();
+            $salesStats = StatsLog::where('metric_type', 'sales')
+                ->latest('recorded_at')
+                ->first();
+
+            // StatsLogモデルから返される値を調整
+            $formattedOrderStats = [
+                'currentValue' => $currentCount,
+                'previousValue' => $orderStats ? $orderStats->previous_value : $currentCount,
+                'changeRate' => $orderStats ? $orderStats->change_rate : 0
+            ];
+
+            $formattedSalesStats = [
+                'currentValue' => $currentSales,
+                'previousValue' => $salesStats ? $salesStats->previous_value : $currentSales,
+                'changeRate' => $salesStats ? $salesStats->change_rate : 0
+            ];
+
+            // レスポンスデータを構築
+            $responseData = [
+                'data' => $orders,
                 'meta' => [
                     'current_page' => $orders->currentPage(),
-                    'per_page' => $orders->perPage(),
+                    'total_pages' => $orders->lastPage(),
                     'total' => $orders->total(),
-                    'last_page' => $orders->lastPage(),
                 ],
                 'stats' => [
-                    'totalCount' => $currentStats['totalCount'],
-                    'previousCount' => $currentStats['previousCount'],
-                    'changeRate' => $currentStats['changeRate']
+                    'totalCount' => $formattedOrderStats['currentValue'],
+                    'previousCount' => $formattedOrderStats['previousValue'],
+                    'changeRate' => $formattedOrderStats['changeRate'],
+                    'totalSales' => $formattedSalesStats['currentValue'],
+                    'previousSales' => $formattedSalesStats['previousValue'],
+                    'salesChangeRate' => $formattedSalesStats['changeRate']
                 ]
             ];
 
-            Log::info('Order stats calculated', $currentStats);
-            Log::info('Order index response prepared', [
-                'totalCount' => $currentStats['totalCount'],
-                'changeRate' => $currentStats['changeRate']
+            Log::info('Stats Debug', [
+                'orderStats' => $orderStats,
+                'orderStats_type' => gettype($orderStats),
+                'orderStats_class' => $orderStats ? get_class($orderStats) : null,
+                'salesStats' => $salesStats,
+                'salesStats_type' => gettype($salesStats),
+                'salesStats_class' => $salesStats ? get_class($salesStats) : null
             ]);
 
-            return response()->json($response, Response::HTTP_OK);
+            return response()->json($responseData, Response::HTTP_OK);
         } catch (\Exception $e) {
             Log::error('Order index error:', [
                 'message' => $e->getMessage(),
@@ -120,28 +144,54 @@ class OrderController extends Controller
         try {
             DB::beginTransaction();
 
-            // 作成前の合計を取得
-            $previousTotalCount = Order::whereNotIn('status', ['CANCELLED'])->count();
-
-            // 注文を作成し、orderDate に現在日時を設定
+            // 注文を作成
             $validatedData = $request->validated();
-            $validatedData['orderDate'] = now(); // orderDate を現在の日時に設定
+            $validatedData['orderDate'] = now();
             $order = $this->orderService->createOrder($validatedData);
 
-            // 作成後の合計を取得
-            $currentTotalCount = Order::whereNotIn('status', ['CANCELLED'])->count();
+            // アクティブな注文を取得して統計計算
+            $activeOrders = Order::whereNotIn('status', [Order::STATUS_CANCELLED])
+                ->whereNull('deleted_at')
+                ->with('orderItems')
+                ->get();
 
-            // 変化率を計算
-            $changeRate = $previousTotalCount > 0
-                ? round((($currentTotalCount - $previousTotalCount) / $previousTotalCount) * 100, 1)
-                : 0;
+            $currentOrderCount = $activeOrders->sum(function ($order) {
+                return $order->orderItems->sum('quantity');
+            });
+            $currentSales = $activeOrders->sum('totalAmount');
 
-            // イベントを発行
+            // 統計更新を一度だけ行い、結果を保持
+            $orderStats = $this->statsService->updateStats('order_count', $currentOrderCount);
+            $salesStats = $this->statsService->updateStats('sales', $currentSales);
+
+            // WebSocket通知
             broadcast(new OrderCountUpdated(
-                $currentTotalCount,
-                $previousTotalCount,
-                $changeRate
+                $orderStats['currentValue'],
+                $orderStats['previousValue'],
+                $orderStats['changeRate']
             ));
+
+            broadcast(new SalesUpdated(
+                $salesStats['currentValue'],
+                $salesStats['previousValue'],
+                $salesStats['changeRate']
+            ));
+
+            Log::info('Order created and stats updated', [
+                'order_id' => $order->id,
+                'stats' => [
+                    'orders' => [
+                        'current' => $currentOrderCount,
+                        'previous' => $orderStats['previousValue'],
+                        'change' => $orderStats['changeRate']
+                    ],
+                    'sales' => [
+                        'current' => $currentSales,
+                        'previous' => $salesStats['previousValue'],
+                        'change' => $salesStats['changeRate']
+                    ]
+                ]
+            ]);
 
             DB::commit();
 
@@ -163,13 +213,13 @@ class OrderController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Order creation failed', [
-                'message' => $e->getMessage(),
+                'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
             return response()->json([
                 'error' => [
-                    'code' => 'ORDER_ERROR',
-                    'message' => '注文の作成に失敗しました。'
+                    'code' => 'ORDER_CREATE_ERROR',
+                    'message' => '注文の作成に失敗しました'
                 ]
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
@@ -181,11 +231,15 @@ class OrderController extends Controller
     public function show(Order $order): JsonResponse
     {
         try {
-            return response()->json(
-                $order->load(['customer', 'orderItems.product', 'user', 'campaign']),
-                Response::HTTP_OK
-            );
+            $orderWithRelations = $order->load(['customer', 'orderItems.product', 'user', 'campaign']);
+
+            // ログにデータを記録する
+            Log::info('Order Details with Relations:', $orderWithRelations->toArray());
+
+            return response()->json($orderWithRelations, Response::HTTP_OK);
         } catch (\Exception $e) {
+            Log::error('注文情報の取得に失敗しました:', ['error' => $e->getMessage()]);
+
             return response()->json([
                 'error' => [
                     'code' => 'ORDER_ERROR',
@@ -203,11 +257,60 @@ class OrderController extends Controller
         try {
             DB::beginTransaction();
 
+            // 注文明細を更新
             $order = $this->orderService->updateOrderItems($order, $request->orderItems);
+
+            // アクティブな注文を取得して統計計算（ステータスがキャンセルでない注文のみ）
+            $activeOrders = Order::whereNotIn('status', [Order::STATUS_CANCELLED])
+                ->whereNull('deleted_at')
+                ->with('orderItems')
+                ->get();
+
+            // 注文数と売上の現在値を計算
+            $currentOrderCount = $activeOrders->sum(function ($order) {
+                return $order->orderItems->sum('quantity');
+            });
+            $currentSales = $activeOrders->sum('totalAmount');
+
+            // 最新の統計を取得
+            $latestOrderStats = StatsLog::where('metric_type', 'order_count')
+                ->latest('recorded_at')
+                ->first();
+            $latestSalesStats = StatsLog::where('metric_type', 'sales')
+                ->latest('recorded_at')
+                ->first();
+
+            // 値が実際に変化している場合のみ更新
+            if ($latestOrderStats->current_value !== $currentOrderCount) {
+                $orderStats = $this->statsService->updateStats('order_count', $currentOrderCount);
+
+                broadcast(new OrderCountUpdated(
+                    $orderStats['currentValue'],
+                    $orderStats['previousValue'],
+                    $orderStats['changeRate']
+                ));
+            }
+
+            if ($latestSalesStats->current_value !== $currentSales) {
+                $salesStats = $this->statsService->updateStats('sales', $currentSales);
+
+                broadcast(new SalesUpdated(
+                    $salesStats['currentValue'],
+                    $salesStats['previousValue'],
+                    $salesStats['changeRate']
+                ));
+            }
+
+            Log::info('Order items updated and stats recalculated', [
+                'order_id' => $order->id,
+                'actual_stats' => [
+                    'order_count' => $currentOrderCount,
+                    'total_sales' => $currentSales
+                ]
+            ]);
 
             DB::commit();
 
-            // レスポンスを明示的に構造化
             return response()->json([
                 'id' => $order->id,
                 'orderNumber' => $order->orderNumber,
@@ -222,6 +325,11 @@ class OrderController extends Controller
             ], Response::HTTP_OK);
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Order items update failed', [
+                'order_id' => $order->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return response()->json([
                 'error' => [
                     'code' => 'ORDER_ERROR',
@@ -234,35 +342,65 @@ class OrderController extends Controller
     /**
      * 注文ステータスを更新
      */
-    /**
-     * 注文ステータスを更新
-     */
     public function updateStatus(UpdateOrderStatusRequest $request, Order $order): JsonResponse
     {
         try {
             DB::beginTransaction();
 
-            // 変更前のステータスを保持
-            $oldStatus = $order->status;
+            $originalStatus = $order->status;
+            $newStatus = $request->status;
 
-            // ステータスを更新
-            $order->update(['status' => $request->status]);
+            // ステータス更新
+            $order->update(['status' => $newStatus]);
 
-            // キャンセルされた場合またはキャンセルから他のステータスに変更された場合は統計を更新
-            if (($request->status === Order::STATUS_CANCELLED && $oldStatus !== Order::STATUS_CANCELLED) ||
-                ($oldStatus === Order::STATUS_CANCELLED && $request->status !== Order::STATUS_CANCELLED)
-            ) {
+            // キャンセル時のみ統計を更新
+            if ($newStatus === Order::STATUS_CANCELLED) {
+                // アクティブな注文を取得して統計計算
+                $activeOrders = Order::whereNotIn('status', [Order::STATUS_CANCELLED])
+                    ->whereNull('deleted_at')
+                    ->with('orderItems')
+                    ->get();
 
-                // 現在の注文数を取得して統計を更新（キャンセル以外）
-                $currentCount = Order::whereNotIn('status', ['CANCELLED'])->count();
-                $stats = $this->updateOrderStats($currentCount);
+                $currentOrderCount = $activeOrders->sum(function ($order) {
+                    return $order->orderItems->sum('quantity');
+                });
+                $currentSales = $activeOrders->sum('totalAmount');
 
-                // イベントを発行
+                // 統計更新を1回のトランザクションで実行
+                $stats = DB::transaction(function () use ($currentOrderCount, $currentSales) {
+                    $orderStats = $this->statsService->updateStats('order_count', $currentOrderCount);
+                    $salesStats = $this->statsService->updateStats('sales', $currentSales);
+
+                    return [
+                        'orders' => $orderStats,
+                        'sales' => $salesStats
+                    ];
+                });
+
+                // イベント発行
                 broadcast(new OrderCountUpdated(
-                    $stats['totalCount'],
-                    $stats['previousCount'],
-                    $stats['changeRate']
+                    $currentOrderCount,
+                    $stats['orders']['previousValue'],
+                    $stats['orders']['changeRate']
                 ));
+
+                broadcast(new SalesUpdated(
+                    $currentSales,
+                    $stats['sales']['previousValue'],
+                    $stats['sales']['changeRate']
+                ));
+
+                Log::info('Order cancelled and stats updated', [
+                    'order_id' => $order->id,
+                    'previous_status' => $originalStatus,
+                    'new_status' => $newStatus,
+                    'final_stats' => [
+                        'active_orders' => $currentOrderCount,
+                        'total_sales' => $currentSales,
+                        'order_change' => $stats['orders']['changeRate'],
+                        'sales_change' => $stats['sales']['changeRate']
+                    ]
+                ]);
             }
 
             DB::commit();
@@ -273,12 +411,14 @@ class OrderController extends Controller
             );
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Status update failed', [
+                'order_id' => $order->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return response()->json([
-                'error' => [
-                    'code' => 'ORDER_ERROR',
-                    'message' => 'ステータスの更新に失敗しました。'
-                ]
-            ], Response::HTTP_BAD_REQUEST);
+                'error' => 'ステータスの更新に失敗しました。'
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -290,63 +430,87 @@ class OrderController extends Controller
         try {
             DB::beginTransaction();
 
-            if ($order->status === Order::STATUS_DELIVERED) {
-                throw new \Exception('配達完了した注文は削除できません');
+            if (!$order->canBeCancelled()) {
+                return response()->json([
+                    'error' => [
+                        'code' => 'ORDER_CANNOT_BE_DELETED',
+                        'message' => 'この注文は削除できません'
+                    ]
+                ], Response::HTTP_BAD_REQUEST);
             }
 
+            // 削除前の統計を取得
+            $activeOrders = Order::whereNotIn('status', [Order::STATUS_CANCELLED])
+                ->whereNull('deleted_at')
+                ->with('orderItems')
+                ->get();
+
+            $previousOrderCount = $activeOrders->sum(function ($order) {
+                return $order->orderItems->sum('quantity');
+            });
+            $previousSales = $activeOrders->sum('totalAmount');
+
+            // 注文を論理削除
             $order->delete();
 
-            // 現在の注文数を取得して統計を更新
-            $currentCount = Order::whereNotIn('status', ['CANCELLED'])->count();
-            $stats = $this->updateOrderStats($currentCount);
+            // 削除後の統計を計算
+            $activeOrders = Order::whereNotIn('status', [Order::STATUS_CANCELLED])
+                ->whereNull('deleted_at')
+                ->with('orderItems')
+                ->get();
 
-            // イベントを発行
+            $currentOrderCount = $activeOrders->sum(function ($order) {
+                return $order->orderItems->sum('quantity');
+            });
+            $currentSales = $activeOrders->sum('totalAmount');
+
+            // 統計を更新
+            $orderStats = $this->statsService->updateStats('order_count', $currentOrderCount);
+            $salesStats = $this->statsService->updateStats('sales', $currentSales);
+
+            // WebSocket通知
             broadcast(new OrderCountUpdated(
-                $stats['totalCount'],
-                $stats['previousCount'],
-                $stats['changeRate']
+                $orderStats['currentValue'],
+                $orderStats['previousValue'],
+                $orderStats['changeRate']
             ));
+
+            broadcast(new SalesUpdated(
+                $salesStats['currentValue'],
+                $salesStats['previousValue'],
+                $salesStats['changeRate']
+            ));
+
+            Log::info('Order deleted and stats updated', [
+                'order_id' => $order->id,
+                'stats' => [
+                    'orders' => [
+                        'previous' => $previousOrderCount,
+                        'current' => $currentOrderCount,
+                        'change' => $orderStats['changeRate']
+                    ],
+                    'sales' => [
+                        'previous' => $previousSales,
+                        'current' => $currentSales,
+                        'change' => $salesStats['changeRate']
+                    ]
+                ]
+            ]);
 
             DB::commit();
             return response()->json(null, Response::HTTP_NO_CONTENT);
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('注文の削除に失敗しました:', [
+                'order_id' => $order->id,
+                'error' => $e->getMessage()
+            ]);
             return response()->json([
-                'message' => $e->getMessage()
-            ], Response::HTTP_BAD_REQUEST);
+                'error' => [
+                    'code' => 'ORDER_DELETE_ERROR',
+                    'message' => '注文の削除に失敗しました'
+                ]
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
-    }
-
-    private function updateOrderStats(int $currentCount): array
-    {
-        // 前回の総数を取得。ない場合は現在の数を使用
-        $previousTotalCount = Cache::get('previous_order_count', $currentCount);
-        $changeRate = Cache::get('order_change_rate', 0.0);
-
-        // 現在の値が前回の値と異なる場合のみ更新
-        if ($currentCount !== $previousTotalCount) {
-            $changeRate = $this->calculateChangeRate($currentCount, $previousTotalCount);
-
-            // 現在の値を次回の比較のために保存
-            Cache::put('previous_order_count', $currentCount, now()->addDay());
-            Cache::put('order_change_rate', $changeRate, now()->addDay());
-        }
-
-        return [
-            'totalCount' => $currentCount,
-            'previousCount' => $previousTotalCount,
-            'changeRate' => $changeRate
-        ];
-    }
-
-    /**
-     * 変動率を計算
-     */
-    private function calculateChangeRate($currentCount, $previousCount): float
-    {
-        if ($previousCount == 0) {
-            return $currentCount > 0 ? 100 : 0;
-        }
-        return round((($currentCount - $previousCount) / $previousCount) * 100, 1);
     }
 }
