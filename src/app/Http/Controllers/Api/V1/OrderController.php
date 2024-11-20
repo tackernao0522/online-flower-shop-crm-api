@@ -42,6 +42,10 @@ class OrderController extends Controller
 
             $query = Order::with(['customer', 'orderItems.product', 'user']);
 
+            if ($request->has('search')) {
+                $query->customerNameLike($request->input('search'));
+            }
+
             // フィルタリング処理
             if ($request->has('start_date') || $request->has('end_date')) {
                 $query->dateRange($request->start_date, $request->end_date);
