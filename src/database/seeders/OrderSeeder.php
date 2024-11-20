@@ -30,7 +30,7 @@ class OrderSeeder extends Seeder
                 StatsLog::where('metric_type', 'sales')->delete();
 
                 // 進行中の注文を作成
-                $this->createOrdersWithStatus('processing', 5);
+                $this->createOrdersWithStatus('processing', 100);
 
                 // 配送済みの注文を作成
                 $this->createOrdersWithStatus('delivered', 10);

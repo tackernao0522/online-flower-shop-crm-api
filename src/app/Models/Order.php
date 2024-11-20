@@ -330,4 +330,21 @@ class Order extends Model
     {
         return $query->whereNotIn('status', [self::STATUS_CANCELLED]);
     }
+
+    /**
+     * 顧客名による検索
+     *
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @param string|null $customerName
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeCustomerNameLike($query, $customerName)
+    {
+        if ($customerName) {
+            return $query->whereHas('customer', function ($q) use ($customerName) {
+                $q->where('name', 'like', "%{$customerName}%");
+            });
+        }
+        return $query;
+    }
 }
