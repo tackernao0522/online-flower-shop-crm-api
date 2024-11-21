@@ -43,7 +43,13 @@ class OrderController extends Controller
             $query = Order::with(['customer', 'orderItems.product', 'user']);
 
             if ($request->has('search')) {
-                $query->customerNameLike($request->input('search'));
+                $searchTerm = $request->input('search');
+                $query->where(function ($q) use ($searchTerm) {
+                    $q->orderNumberLike($searchTerm)
+                      ->orWhere(function ($q) use ($searchTerm) {
+                          $q->customerNameLike($searchTerm);
+                      });
+                });
             }
 
             // フィルタリング処理
