@@ -22,12 +22,19 @@ class OrderFactory extends Factory
         // 注文日時は過去3ヶ月以内でランダム
         $orderDate = $this->faker->dateTimeBetween('-3 months', 'now');
 
+        // 注文番号の一意性を確保
+        do {
+            $orderNumber = 'ORD-' . $orderDate->format('Ymd') . '-' .
+                strtoupper($this->faker->bothify('##??'));
+            $exists = \App\Models\Order::where('orderNumber', $orderNumber)->exists();
+        } while ($exists);
+
         return [
-            'orderNumber' => 'ORD-' . $orderDate->format('Ymd') . '-' . strtoupper($this->faker->bothify('##??')),
+            'orderNumber' => $orderNumber,
             'orderDate' => $orderDate,
-            'totalAmount' => 0, // 注文明細作成後に更新
+            'totalAmount' => 0,
             'status' => $this->faker->randomElement(Order::getAvailableStatuses()),
-            'discountApplied' => 0, // キャンペーン適用後に更新
+            'discountApplied' => 0,
             'customerId' => function () {
                 return Customer::inRandomOrder()->first()->id;
             },
@@ -35,7 +42,7 @@ class OrderFactory extends Factory
                 return User::where('role', 'STAFF')->inRandomOrder()->first()->id;
             },
             'campaignId' => function () {
-                return $this->faker->boolean(30) ? Campaign::inRandomOrder()->first()->id : null; // 30%の確率でキャンペーン適用
+                return $this->faker->boolean(30) ? Campaign::inRandomOrder()->first()->id : null;
             },
         ];
     }
